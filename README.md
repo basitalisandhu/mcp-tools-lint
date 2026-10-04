@@ -2,7 +2,7 @@
 
 Lint MCP tool schemas and annotations before clients reject them. Point it at a running MCP server (stdio or Streamable HTTP) or at a saved `tools/list` result, and it checks every tool against what Claude Code and other strict clients accept: JSON Schema 2020-12 only, no boolean schemas, `required` names that exist, and annotations that are present, camelCase and not self-contradictory. It prints text, JSON or SARIF, writes an RFC 6902 patch for the fixable findings, and ships as a GitHub Action.
 
-Built alongside [Masoon](https://github.com/basitalisandhu/masoon), open-source trust infrastructure for AI agents, and [dev-mcp-servers](https://github.com/basitalisandhu/dev-mcp-servers).
+Built alongside [dev-mcp-servers](https://github.com/basitalisandhu/dev-mcp-servers).
 
 [![CI](https://github.com/basitalisandhu/mcp-tools-lint/actions/workflows/ci.yml/badge.svg)](https://github.com/basitalisandhu/mcp-tools-lint/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -316,7 +316,8 @@ Issues and pull requests are welcome. Adding a rule is one function in `src/rule
 
 ## Sibling projects
 
-- [masoon](https://github.com/basitalisandhu/masoon): open-source trust infrastructure for AI agents: who they are, what they may touch, and proof of what they did.
+More tools by the same author: https://github.com/basitalisandhu
+
 - [dev-mcp-servers](https://github.com/basitalisandhu/dev-mcp-servers): ten small MCP servers for everyday development and security checks, one npm package each.
 
 ## Licence
