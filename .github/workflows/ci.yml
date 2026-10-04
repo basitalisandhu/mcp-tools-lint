@@ -32,7 +32,7 @@ jobs:
           node dist/cli.js tests/fixtures/tools/draft07.json --format sarif --out draft07.sarif; test $? -eq 1 || exit 1
           node dist/cli.js --format json -- node tests/fixtures/servers/snake.mjs > /dev/null; test $? -eq 1 || exit 1
           set -e
-          node -e "const s=require('./draft07.sarif'); if (s.version!=='2.1.0'||s.runs[0].results.length!==5) process.exit(1)"
+          node -e "const s=JSON.parse(require('fs').readFileSync('draft07.sarif','utf8')); if (s.version!=='2.1.0'||s.runs[0].results.length!==5) process.exit(1)"
       - name: Pack and check the published file list
         run: |
           npm pack --dry-run 2>&1 | tee pack.txt
