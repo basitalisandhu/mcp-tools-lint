@@ -1,7 +1,9 @@
-import { readFile, rm, stat } from 'node:fs/promises';
+import { spawnSync } from 'node:child_process';
+import { mkdtemp, readFile, rm, stat, symlink } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { expectedPatch, parseReport, runCli, serverScript, tempCopy, toolsFile } from './helpers.js';
+import { CLI, expectedPatch, parseReport, runCli, serverScript, tempCopy, toolsFile } from './helpers.js';
 
 const tempDirs: string[] = [];
 afterAll(async () => {
@@ -245,6 +247,17 @@ describe('exit codes and arguments', () => {
     expect(version.stdout.trim()).toBe(pkg.version);
     const rulesRun = await runCli(['--rules']);
     expect(rulesRun.stdout.trim().split('\n')).toHaveLength(9);
+  });
+
+  it('runs when started through a symlinked bin, as after npm install', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'mtl-bin-'));
+    tempDirs.push(dir);
+    const link = join(dir, 'mcp-tools-lint');
+    await symlink(CLI, link);
+    const run = spawnSync(process.execPath, [link, '--version'], { encoding: 'utf8' });
+    expect(run.status).toBe(0);
+    const pkg = JSON.parse(await readFile(join(import.meta.dirname, '..', 'package.json'), 'utf8'));
+    expect(run.stdout.trim()).toBe(pkg.version);
   });
 
   it('does not leave a patch file behind unless asked', async () => {

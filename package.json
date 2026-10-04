@@ -1,5 +1,5 @@
 {
-  "name": "mcp-tools-lint",
+  "name": "@basitalisandhu/mcp-tools-lint",
   "version": "0.1.0",
   "description": "Lint MCP tool schemas and annotations before clients reject them: JSON Schema 2020-12 dialect, boolean schemas, required names, annotation sanity, with text, JSON and SARIF output and an RFC 6902 patch.",
   "license": "MIT",
@@ -67,7 +67,7 @@
     "vitest": "^4.1.0"
   },
   "publishConfig": {
-    "access": "public",
-    "provenance": true
+    "registry": "https://npm.pkg.github.com",
+    "access": "public"
   }
 }

@@ -55,3 +55,20 @@ jobs:
           upload: ${{ github.event_name != 'pull_request' }}
       - name: Show outputs
         run: echo "exit=${{ steps.lint.outputs.exit-code }} errors=${{ steps.lint.outputs.errors }} warnings=${{ steps.lint.outputs.warnings }}"
+
+  container-build:
+    name: Build the container image and run it
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Build the image, print --help and lint a fixture from a mount
+        run: |
+          docker build --build-arg VERSION=ci -t mcp-tools-lint:ci .
+          docker run --rm mcp-tools-lint:ci --help > help.txt && grep "^Usage" help.txt
+          docker run --rm mcp-tools-lint:ci --version
+          docker run --rm -v "$PWD/tests/fixtures/tools:/work:ro" mcp-tools-lint:ci clean.json
+          set +e
+          docker run --rm -v "$PWD/tests/fixtures/tools:/work:ro" mcp-tools-lint:ci draft07.json --format json > /dev/null
+          test $? -eq 1
