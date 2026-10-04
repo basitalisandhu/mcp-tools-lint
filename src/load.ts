@@ -90,7 +90,7 @@ async function listAllTools(client: Client, timeoutMs: number): Promise<unknown[
 
 async function loadLive(target: Exclude<Target, { kind: 'file' }>, options: LoadOptions): Promise<ToolsDocument> {
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-  const client = new Client({ name: 'mcp-tools-lint', version: '0.1.0' }, { capabilities: {} });
+  const client = new Client({ name: 'mcp-tools-lint', version: '0.1.1' }, { capabilities: {} });
   const stderrTail: string[] = [];
 
   let transport: StdioClientTransport | StreamableHTTPClientTransport;

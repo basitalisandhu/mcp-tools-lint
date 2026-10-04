@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.1.1] - 2026-10-06
+
 ### Changed
 
 - Removed the umbrella branding; this project stands alone and links its sibling repositories directly.
@@ -41,5 +45,6 @@ First release. Published to two registries on GitHub Packages, using only the wo
 
 - The `mcp-tools-lint` command did nothing when started through the symlink that `npm install` and `npx` create in `node_modules/.bin`; the entry point now compares real paths. A test starts the CLI through a symlink.
 
-[Unreleased]: https://github.com/basitalisandhu/mcp-tools-lint/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/basitalisandhu/mcp-tools-lint/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/basitalisandhu/mcp-tools-lint/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/basitalisandhu/mcp-tools-lint/releases/tag/v0.1.0
