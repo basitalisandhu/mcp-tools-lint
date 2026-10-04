@@ -1,0 +1,52 @@
+{
+  "tools": [
+    {
+      "name": "read_file",
+      "title": "Read file",
+      "description": "Read the complete contents of a file as text.",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "path": { "type": "string", "description": "Absolute path to the file" },
+          "options": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "type": "object",
+            "properties": { "encoding": { "type": "string", "default": "utf8" } },
+            "additionalProperties": false
+          }
+        },
+        "required": ["path"],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": { "content": { "type": "string" } },
+        "required": ["content"],
+        "additionalProperties": false
+      },
+      "annotations": { "readOnlyHint": true, "destructiveHint": false, "idempotentHint": true, "openWorldHint": false }
+    },
+    {
+      "name": "write_file",
+      "title": "Write file",
+      "description": "Create a new file or overwrite an existing file with new content.",
+      "inputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": { "path": { "type": "string" }, "content": { "type": "string" } },
+        "required": ["path", "content"],
+        "additionalProperties": false
+      },
+      "outputSchema": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": { "bytesWritten": { "type": "integer" } },
+        "required": ["bytesWritten"],
+        "additionalProperties": false
+      },
+      "annotations": { "readOnlyHint": false, "destructiveHint": true, "idempotentHint": true, "openWorldHint": false }
+    }
+  ]
+}

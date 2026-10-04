@@ -1,0 +1,73 @@
+{
+  "name": "mcp-tools-lint",
+  "version": "0.1.0",
+  "description": "Lint MCP tool schemas and annotations before clients reject them: JSON Schema 2020-12 dialect, boolean schemas, required names, annotation sanity, with text, JSON and SARIF output and an RFC 6902 patch.",
+  "license": "MIT",
+  "author": "Muhammad Basit Ali",
+  "homepage": "https://github.com/basitalisandhu/mcp-tools-lint#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/basitalisandhu/mcp-tools-lint.git"
+  },
+  "bugs": {
+    "url": "https://github.com/basitalisandhu/mcp-tools-lint/issues"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "mcp-server",
+    "json-schema",
+    "linter",
+    "lint",
+    "claude-code",
+    "developer-tools",
+    "sarif",
+    "github-actions",
+    "json-patch",
+    "tool-annotations",
+    "cli"
+  ],
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "mcp-tools-lint": "dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "action",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "pretest": "npm run build",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint:fixtures": "node dist/cli.js tests/fixtures/tools/clean.json"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.0",
+    "zod": "^3.25.0 || ^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.9.0",
+    "vitest": "^4.1.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  }
+}

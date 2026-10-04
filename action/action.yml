@@ -1,0 +1,178 @@
+name: mcp-tools-lint
+description: Lint an MCP server's tool schemas and annotations against what Claude Code and other strict clients accept, and upload the result to GitHub code scanning as SARIF.
+author: Muhammad Basit Ali
+branding:
+  icon: check-square
+  color: blue
+
+inputs:
+  target:
+    description: A tools.json file or a Streamable HTTP URL. Leave empty when using `command`.
+    required: false
+    default: ""
+  command:
+    description: A stdio server command, for example `node dist/index.js`. Used when `target` is empty.
+    required: false
+    default: ""
+  env:
+    description: Extra environment for a stdio server, one KEY=VALUE per line.
+    required: false
+    default: ""
+  headers:
+    description: "Extra HTTP headers for a Streamable HTTP server, one `Name: value` per line."
+    required: false
+    default: ""
+  sarif-file:
+    description: Where to write the SARIF report.
+    required: false
+    default: mcp-tools-lint.sarif
+  sarif-location:
+    description: Repository path that SARIF results point at (defaults to the file target, or the first existing file among the command's arguments).
+    required: false
+    default: ""
+  fail-on:
+    description: Lowest severity that fails the step (error, warning, info, none).
+    required: false
+    default: error
+  upload:
+    description: Upload the SARIF file to GitHub code scanning (needs security-events write permission).
+    required: false
+    default: "true"
+  patch-file:
+    description: If set, write an RFC 6902 patch for the fixable findings to this path.
+    required: false
+    default: ""
+  timeout:
+    description: Seconds to wait for initialize and tools/list.
+    required: false
+    default: "20"
+  node-version:
+    description: Node.js version to set up.
+    required: false
+    default: "22"
+  version:
+    description: mcp-tools-lint version to run from npm. Empty builds the action's own checkout.
+    required: false
+    default: ""
+
+outputs:
+  sarif-file:
+    description: Path of the SARIF report that was written.
+    value: ${{ steps.lint.outputs.sarif-file }}
+  exit-code:
+    description: Exit code of the linter (0 clean, 1 findings, 2 could not run).
+    value: ${{ steps.lint.outputs.exit-code }}
+  errors:
+    description: Number of error findings.
+    value: ${{ steps.lint.outputs.errors }}
+  warnings:
+    description: Number of warning findings.
+    value: ${{ steps.lint.outputs.warnings }}
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Install mcp-tools-lint
+      shell: bash
+      env:
+        MTL_VERSION: ${{ inputs.version }}
+        MTL_ACTION_PATH: ${{ github.action_path }}
+      run: |
+        set -euo pipefail
+        if [ -n "$MTL_VERSION" ]; then
+          npm install -g "mcp-tools-lint@$MTL_VERSION"
+          bin="mcp-tools-lint"
+        else
+          pkg="$(cd "$MTL_ACTION_PATH/.." && pwd)"
+          (cd "$pkg" && npm ci --no-audit --no-fund && npm run build)
+          bin="node $pkg/dist/cli.js"
+        fi
+        echo "MTL_BIN=$bin" >> "$GITHUB_ENV"
+        $bin --version
+
+    - name: Lint
+      id: lint
+      shell: bash
+      env:
+        MTL_TARGET: ${{ inputs.target }}
+        MTL_COMMAND: ${{ inputs.command }}
+        MTL_ENV: ${{ inputs.env }}
+        MTL_HEADERS: ${{ inputs.headers }}
+        MTL_SARIF: ${{ inputs.sarif-file }}
+        MTL_SARIF_LOCATION: ${{ inputs.sarif-location }}
+        MTL_FAIL_ON: ${{ inputs.fail-on }}
+        MTL_PATCH: ${{ inputs.patch-file }}
+        MTL_TIMEOUT: ${{ inputs.timeout }}
+      run: |
+        set -uo pipefail
+        # Options go before the target; everything after "--" belongs to the server command.
+        opts=(--timeout "$MTL_TIMEOUT")
+        while IFS= read -r line; do
+          [ -n "$line" ] && opts+=(-e "$line")
+        done <<< "$MTL_ENV"
+        while IFS= read -r line; do
+          [ -n "$line" ] && opts+=(-H "$line")
+        done <<< "$MTL_HEADERS"
+        if [ -n "$MTL_SARIF_LOCATION" ]; then opts+=(--sarif-location "$MTL_SARIF_LOCATION"); fi
+        if [ -n "$MTL_PATCH" ]; then opts+=(--fix --patch-out "$MTL_PATCH"); fi
+        if [ -n "$MTL_TARGET" ]; then
+          target=("$MTL_TARGET")
+        elif [ -n "$MTL_COMMAND" ]; then
+          # shellcheck disable=SC2206
+          target=(-- $MTL_COMMAND)
+        else
+          echo "::error::set either target or command"
+          echo "exit-code=2" >> "$GITHUB_OUTPUT"
+          exit 2
+        fi
+
+        $MTL_BIN --format sarif --out "$MTL_SARIF" --fail-on "$MTL_FAIL_ON" "${opts[@]}" "${target[@]}"
+        code=$?
+        echo "exit-code=$code" >> "$GITHUB_OUTPUT"
+        echo "sarif-file=$MTL_SARIF" >> "$GITHUB_OUTPUT"
+
+        if [ "$code" -ne 2 ]; then
+          counts=$(node -e "const r=JSON.parse(require('fs').readFileSync(process.argv[1],'utf8')).runs[0].results;console.log(r.filter(x=>x.level==='error').length, r.filter(x=>x.level==='warning').length)" "$MTL_SARIF")
+          errors=${counts% *}
+          warnings=${counts#* }
+          echo "errors=$errors" >> "$GITHUB_OUTPUT"
+          echo "warnings=$warnings" >> "$GITHUB_OUTPUT"
+          # Second pass, text format, for the job summary; the target is read again.
+          {
+            echo "### mcp-tools-lint"
+            echo
+            echo '```'
+            $MTL_BIN --format text --fail-on none "${opts[@]}" "${target[@]}" || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+        else
+          echo "errors=" >> "$GITHUB_OUTPUT"
+          echo "warnings=" >> "$GITHUB_OUTPUT"
+        fi
+        exit 0
+
+    - name: Upload SARIF to code scanning
+      if: ${{ inputs.upload == 'true' && steps.lint.outputs.exit-code != '2' }}
+      uses: github/codeql-action/upload-sarif@v3
+      with:
+        sarif_file: ${{ inputs.sarif-file }}
+        category: mcp-tools-lint
+
+    - name: Enforce the result
+      shell: bash
+      env:
+        MTL_CODE: ${{ steps.lint.outputs.exit-code }}
+      run: |
+        if [ -z "$MTL_CODE" ] || [ "$MTL_CODE" = "2" ]; then
+          echo "::error::mcp-tools-lint could not read or reach the target"
+          exit 2
+        fi
+        if [ "$MTL_CODE" != "0" ]; then
+          echo "::error::mcp-tools-lint found problems at or above the fail-on threshold"
+          exit 1
+        fi

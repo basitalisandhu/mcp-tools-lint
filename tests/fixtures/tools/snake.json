@@ -1,0 +1,36 @@
+{
+  "tools": [
+    {
+      "name": "get_sleep",
+      "description": "Return sleep data for a date range.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "start": { "type": "string", "format": "date" },
+          "end": { "type": "string", "format": "date" }
+        },
+        "required": ["start", "end"]
+      },
+      "annotations": {
+        "title": "Get sleep",
+        "read_only_hint": true,
+        "destructive_hint": false,
+        "idempotent_hint": true,
+        "open_world_hint": true
+      }
+    },
+    {
+      "name": "log_workout",
+      "description": "Record a workout.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "kind": { "type": "string" },
+          "minutes": { "type": "integer", "minimum": 1 }
+        },
+        "required": ["kind", "minutes"]
+      },
+      "annotations": { "readOnlyHint": false, "read_only_hint": false, "destructive_hint": false }
+    }
+  ]
+}

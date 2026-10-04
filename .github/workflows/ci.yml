@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Build and test (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ["20", "22"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - name: Smoke-test the CLI against the fixtures
+        run: |
+          set +e
+          node dist/cli.js tests/fixtures/tools/clean.json; test $? -eq 0 || exit 1
+          node dist/cli.js tests/fixtures/tools/draft07.json --format sarif --out draft07.sarif; test $? -eq 1 || exit 1
+          node dist/cli.js --format json -- node tests/fixtures/servers/snake.mjs > /dev/null; test $? -eq 1 || exit 1
+          set -e
+          node -e "const s=require('./draft07.sarif'); if (s.version!=='2.1.0'||s.runs[0].results.length!==5) process.exit(1)"
+      - name: Pack and check the published file list
+        run: |
+          npm pack --dry-run 2>&1 | tee pack.txt
+          grep -q "dist/cli.js" pack.txt
+          grep -q "action/action.yml" pack.txt
+
+  action:
+    name: Run the action on a fixture
+    runs-on: ubuntu-latest
+    needs: test
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./action
+        id: lint
+        with:
+          target: tests/fixtures/tools/clean.json
+          upload: ${{ github.event_name != 'pull_request' }}
+      - name: Show outputs
+        run: echo "exit=${{ steps.lint.outputs.exit-code }} errors=${{ steps.lint.outputs.errors }} warnings=${{ steps.lint.outputs.warnings }}"

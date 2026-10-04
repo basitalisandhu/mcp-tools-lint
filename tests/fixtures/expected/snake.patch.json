@@ -1,0 +1,31 @@
+[
+  {
+    "op": "move",
+    "from": "/tools/0/annotations/read_only_hint",
+    "path": "/tools/0/annotations/readOnlyHint"
+  },
+  {
+    "op": "move",
+    "from": "/tools/0/annotations/destructive_hint",
+    "path": "/tools/0/annotations/destructiveHint"
+  },
+  {
+    "op": "move",
+    "from": "/tools/0/annotations/idempotent_hint",
+    "path": "/tools/0/annotations/idempotentHint"
+  },
+  {
+    "op": "move",
+    "from": "/tools/0/annotations/open_world_hint",
+    "path": "/tools/0/annotations/openWorldHint"
+  },
+  {
+    "op": "remove",
+    "path": "/tools/1/annotations/read_only_hint"
+  },
+  {
+    "op": "move",
+    "from": "/tools/1/annotations/destructive_hint",
+    "path": "/tools/1/annotations/destructiveHint"
+  }
+]

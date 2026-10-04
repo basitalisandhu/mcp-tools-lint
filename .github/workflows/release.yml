@@ -1,0 +1,98 @@
+name: Release
+
+# Publishes to npm when a tag v* is pushed. Two ways to authenticate:
+#
+# 1. Trusted publishing (recommended, no long-lived secret): on npmjs.com, open the
+#    package settings, add a trusted publisher for this repository with workflow file
+#    "release.yml", and leave NPM_TOKEN unset. npm 11.5.1 or newer exchanges the
+#    workflow's OIDC token for a short-lived publish token; the step below upgrades npm.
+#
+# 2. A granular access token: create one on npmjs.com with publish rights for this
+#    package (bypass 2FA for automation), store it as the repository secret NPM_TOKEN.
+#
+# Both paths publish with provenance, which requires id-token: write.
+#
+# The publish job runs in the "npm" environment: create it once in this repository
+# (Settings, Environments) and optionally require a reviewer on it.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+      - name: Check the tag matches the package version
+        run: |
+          version=$(node -p "require('./package.json').version")
+          test "v$version" = "${GITHUB_REF_NAME}" || { echo "tag ${GITHUB_REF_NAME} does not match version $version"; exit 1; }
+      - run: npm pack
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tarball
+          path: "*.tgz"
+          if-no-files-found: error
+
+  publish:
+    name: Publish to npm
+    needs: build
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Upgrade npm for trusted publishing support
+        run: npm install -g npm@latest && npm --version
+      - run: npm ci
+      - run: npm run build
+      - name: Publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -n "${NODE_AUTH_TOKEN:-}" ]; then
+            npm config set //registry.npmjs.org/:_authToken "$NODE_AUTH_TOKEN"
+          fi
+          npm publish --provenance --access public
+
+  release:
+    name: Create GitHub release
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: tarball
+          path: dist-tarball/
+      - name: Extract release notes from CHANGELOG.md
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v ver="$version" '
+            /^## / { if (found) exit; if (index($0, "[" ver "]")) { found=1; next } }
+            found { print }
+          ' CHANGELOG.md > notes.md
+          if [ ! -s notes.md ]; then echo "Release $GITHUB_REF_NAME" > notes.md; fi
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist-tarball/*.tgz --title "$GITHUB_REF_NAME" --notes-file notes.md

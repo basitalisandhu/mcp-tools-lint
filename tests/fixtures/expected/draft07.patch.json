@@ -1,0 +1,22 @@
+[
+  {
+    "op": "remove",
+    "path": "/tools/0/inputSchema/$schema"
+  },
+  {
+    "op": "remove",
+    "path": "/tools/0/inputSchema/properties/options/$schema"
+  },
+  {
+    "op": "remove",
+    "path": "/tools/0/outputSchema/$schema"
+  },
+  {
+    "op": "remove",
+    "path": "/tools/1/inputSchema/$schema"
+  },
+  {
+    "op": "remove",
+    "path": "/tools/1/outputSchema/$schema"
+  }
+]

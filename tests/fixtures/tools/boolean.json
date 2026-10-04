@@ -1,0 +1,41 @@
+{
+  "tools": [
+    {
+      "name": "search_docs",
+      "description": "Search the documentation index.",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "query": { "type": "string" },
+          "filters": true,
+          "tags": { "type": "array", "items": true }
+        },
+        "required": ["query", "limit"],
+        "definitions": { "Tag": { "type": "string" } }
+      },
+      "annotations": { "readOnlyHint": true, "destructiveHint": false, "idempotentHint": true, "openWorldHint": false }
+    },
+    {
+      "name": "update_doc",
+      "description": "Replace the body of a document.",
+      "inputSchema": {
+        "$id": "https://example.com/schemas/update-doc#body",
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "required": true },
+          "body": { "type": "string" }
+        },
+        "required": ["id", "body"]
+      },
+      "annotations": { "readOnlyHint": true }
+    },
+    {
+      "name": "delete_doc",
+      "inputSchema": {
+        "type": "object",
+        "properties": { "id": { "type": "string" } },
+        "required": ["id"]
+      }
+    }
+  ]
+}
