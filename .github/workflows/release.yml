@@ -14,6 +14,13 @@ name: Release
 #
 # The publish job runs in the "npm" environment: create it once in this repository
 # (Settings, Environments) and optionally require a reviewer on it.
+#
+# Off by default. GitHub Packages publishing (publish-github-packages.yml) runs on the same tags, so this
+# workflow only runs once npmjs.com is set up: set the repository variable NPMJS_PUBLISH to "true"
+# (Settings > Secrets and variables > Actions > Variables) after configuring trusted publishing or NPM_TOKEN.
+# The --registry flag below overrides publishConfig.registry, which points at GitHub Packages.
+# The package name on npmjs.com is the scoped @basitalisandhu/mcp-tools-lint; the unscoped name
+# mcp-tools-lint is not used yet and can be claimed later if wanted.
 
 on:
   push:
@@ -25,6 +32,7 @@ permissions:
 jobs:
   build:
     name: Build and test
+    if: vars.NPMJS_PUBLISH == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -49,6 +57,7 @@ jobs:
   publish:
     name: Publish to npm
     needs: build
+    if: vars.NPMJS_PUBLISH == 'true'
     runs-on: ubuntu-latest
     environment: npm
     permissions:
@@ -70,11 +79,12 @@ jobs:
           if [ -n "${NODE_AUTH_TOKEN:-}" ]; then
             npm config set //registry.npmjs.org/:_authToken "$NODE_AUTH_TOKEN"
           fi
-          npm publish --provenance --access public
+          npm publish --provenance --access public --registry https://registry.npmjs.org
 
   release:
     name: Create GitHub release
     needs: publish
+    if: vars.NPMJS_PUBLISH == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -92,7 +102,12 @@ jobs:
             found { print }
           ' CHANGELOG.md > notes.md
           if [ ! -s notes.md ]; then echo "Release $GITHUB_REF_NAME" > notes.md; fi
-      - name: Create release
+      - name: Create release (or add the tarball if publish-github-packages.yml created it first)
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" dist-tarball/*.tgz --title "$GITHUB_REF_NAME" --notes-file notes.md
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" dist-tarball/*.tgz --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" dist-tarball/*.tgz --title "$GITHUB_REF_NAME" --notes-file notes.md
+          fi

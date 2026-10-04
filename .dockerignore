@@ -1,0 +1,9 @@
+**/node_modules
+**/dist
+**/*.tgz
+**/*.sarif
+.git
+.github
+action
+docs
+tests

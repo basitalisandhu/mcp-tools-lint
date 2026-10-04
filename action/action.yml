@@ -51,9 +51,13 @@ inputs:
     required: false
     default: "22"
   version:
-    description: mcp-tools-lint version to run from npm. Empty builds the action's own checkout.
+    description: Version of @basitalisandhu/mcp-tools-lint to install from GitHub Packages (npm.pkg.github.com). Empty builds the action's own checkout.
     required: false
     default: ""
+  token:
+    description: Token used to install from GitHub Packages when `version` is set. GitHub's npm registry needs one even for public packages; it must be able to read packages (the workflow token or a token with read:packages).
+    required: false
+    default: ${{ github.token }}
 
 outputs:
   sarif-file:
@@ -81,11 +85,16 @@ runs:
       shell: bash
       env:
         MTL_VERSION: ${{ inputs.version }}
+        MTL_TOKEN: ${{ inputs.token }}
         MTL_ACTION_PATH: ${{ github.action_path }}
       run: |
         set -euo pipefail
         if [ -n "$MTL_VERSION" ]; then
-          npm install -g "mcp-tools-lint@$MTL_VERSION"
+          # A throwaway npm config that maps the scope to GitHub Packages; npm reads the token from the environment.
+          npmrc="$RUNNER_TEMP/mcp-tools-lint.npmrc"
+          printf '%s\n' '@basitalisandhu:registry=https://npm.pkg.github.com' '//npm.pkg.github.com/:_authToken=${MTL_TOKEN}' > "$npmrc"
+          NPM_CONFIG_USERCONFIG="$npmrc" npm install -g "@basitalisandhu/mcp-tools-lint@$MTL_VERSION"
+          rm -f "$npmrc"
           bin="mcp-tools-lint"
         else
           pkg="$(cd "$MTL_ACTION_PATH/.." && pwd)"

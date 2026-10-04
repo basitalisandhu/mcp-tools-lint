@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-import { existsSync } from 'node:fs';
+import { existsSync, realpathSync } from 'node:fs';
 import { readFile, writeFile } from 'node:fs/promises';
 import { basename, relative, isAbsolute } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { parseArgs, type ParseArgsConfig } from 'node:util';
 import { formatJson } from './format/json.js';
 import { formatSarif } from './format/sarif.js';
@@ -254,8 +255,17 @@ export async function main(argv: string[]): Promise<number> {
 // Re-exported for tests that want to lint an in-memory document without a process.
 export { lintTools, locateTools };
 
-const invokedDirectly = process.argv[1] !== undefined && import.meta.url === new URL(`file://${process.argv[1]}`).href;
-if (invokedDirectly || process.env.MCP_TOOLS_LINT_MAIN === '1') {
+function invokedDirectly(): boolean {
+  if (process.argv[1] === undefined) return false;
+  try {
+    // An installed bin (npm i, npx) is a symlink under node_modules/.bin, so compare real paths.
+    return realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
+}
+
+if (invokedDirectly() || process.env.MCP_TOOLS_LINT_MAIN === '1') {
   main(process.argv.slice(2)).then(
     (code) => {
       process.exitCode = code;

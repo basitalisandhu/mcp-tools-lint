@@ -34,15 +34,50 @@ Annotations are the second half. The MCP blog's post on tool annotations says co
 
 ## Install
 
-```bash
-npx mcp-tools-lint --help         # run without installing
-npm install -g mcp-tools-lint     # global CLI
-npm install -D mcp-tools-lint     # as a dev dependency of a server project
-```
-
 Requires Node.js 20 or newer. The only runtime dependencies are `@modelcontextprotocol/sdk` and its peer `zod`.
 
-npm publication is pending; until the first release, run it from a clone:
+Every release is published by `publish-github-packages.yml` in two places on GitHub Packages: the npm package `@basitalisandhu/mcp-tools-lint` and the container image `ghcr.io/basitalisandhu/mcp-tools-lint`. The package is not on npmjs.com yet; when it is, it will use the same scoped name.
+
+### npm from GitHub Packages
+
+Point the `@basitalisandhu` scope at GitHub Packages in `~/.npmrc` (or the project's `.npmrc`):
+
+```
+@basitalisandhu:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+```
+
+GitHub's npm registry asks for a token even to install public packages. That is a GitHub limitation, not a setting of this repository: use a personal access token (classic) with the `read:packages` scope, exported as `GITHUB_TOKEN`. Then:
+
+```bash
+npx @basitalisandhu/mcp-tools-lint --help              # run without installing
+npm install -g @basitalisandhu/mcp-tools-lint@0.1.0    # global CLI, installs the mcp-tools-lint command
+npm install -D @basitalisandhu/mcp-tools-lint@0.1.0    # as a dev dependency of a server project
+```
+
+### Container image
+
+The image is built for `linux/amd64` and `linux/arm64`, runs as the non-root `node` user, and is tagged with the version and `latest`; pin the version. The working directory is `/work`, so mount the files to lint there:
+
+```bash
+docker run --rm -v "$PWD:/work:ro" ghcr.io/basitalisandhu/mcp-tools-lint:0.1.0 tools.json
+docker run --rm ghcr.io/basitalisandhu/mcp-tools-lint:0.1.0 https://mcp.example.com/mcp -H "Authorization: Bearer $TOKEN"
+```
+
+A stdio target runs inside the container, so it only works for a server command the image can start (Node.js is available; mount the server's files). To write a SARIF file or a patch, mount `/work` read-write.
+
+The image is signed with cosign (keyless) and carries a build provenance attestation; an SPDX SBOM is attached to the GitHub release. To check it before running it:
+
+```bash
+cosign verify ghcr.io/basitalisandhu/mcp-tools-lint:0.1.0 \
+  --certificate-identity-regexp '^https://github.com/basitalisandhu/mcp-tools-lint/\.github/workflows/publish-github-packages\.yml@refs/tags/v' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+gh attestation verify oci://ghcr.io/basitalisandhu/mcp-tools-lint:0.1.0 --owner basitalisandhu
+```
+
+To build the image from a checkout: `docker build -t mcp-tools-lint .`
+
+### From a clone
 
 ```bash
 git clone https://github.com/basitalisandhu/mcp-tools-lint && cd mcp-tools-lint
@@ -56,15 +91,15 @@ Three kinds of target:
 
 ```bash
 # 1. A stdio server: everything after "--" is the command. -e adds to its environment.
-npx mcp-tools-lint -- node dist/index.js
-npx mcp-tools-lint -e GITHUB_TOKEN=ghp_xxx -- npx -y @modelcontextprotocol/server-github
+npx @basitalisandhu/mcp-tools-lint -- node dist/index.js
+npx @basitalisandhu/mcp-tools-lint -e GITHUB_TOKEN=ghp_xxx -- npx -y @modelcontextprotocol/server-github
 
 # 2. A Streamable HTTP server. -H adds request headers.
-npx mcp-tools-lint https://mcp.example.com/mcp -H "Authorization: Bearer $TOKEN"
+npx @basitalisandhu/mcp-tools-lint https://mcp.example.com/mcp -H "Authorization: Bearer $TOKEN"
 
 # 3. A JSON file holding a tools/list result ({"tools": [...]}, a bare array,
 #    or a whole JSON-RPC response with result.tools).
-npx mcp-tools-lint tools.json
+npx @basitalisandhu/mcp-tools-lint tools.json
 ```
 
 Options go before the target; everything after `--` belongs to the server command. The tool calls `initialize` and `tools/list` (following `nextCursor`) with a 20 second timeout (`--timeout <seconds>`), and never calls a tool. It reads the raw `tools/list` payload rather than the SDK's parsed version, because the SDK's own parser would reject a boolean property schema and silently drop snake_case annotation keys, which are exactly the things to report.
@@ -76,7 +111,7 @@ Options: `--format text|json|sarif`, `--out <file>`, `--fix`, `--patch-out <file
 Against a server built with the TypeScript SDK's defaults ([`tests/fixtures/tools/draft07.json`](tests/fixtures/tools/draft07.json)):
 
 ```text
-$ npx mcp-tools-lint -- node tests/fixtures/servers/draft07.mjs
+$ npx @basitalisandhu/mcp-tools-lint -- node tests/fixtures/servers/draft07.mjs
 node tests/fixtures/servers/draft07.mjs: 2 tools
 
   read_file
@@ -99,7 +134,7 @@ node tests/fixtures/servers/draft07.mjs: 2 tools
 Against a server with schema and annotation mistakes ([`tests/fixtures/tools/boolean.json`](tests/fixtures/tools/boolean.json)):
 
 ```text
-$ npx mcp-tools-lint tests/fixtures/tools/boolean.json
+$ npx @basitalisandhu/mcp-tools-lint tests/fixtures/tools/boolean.json
 tests/fixtures/tools/boolean.json: 3 tools
 
   search_docs
@@ -138,7 +173,7 @@ A clean server prints the tool count and `No problems found.` and exits 0.
 `--fix` writes `<target>.patch.json` (or `--patch-out <file>`), an [RFC 6902](https://www.rfc-editor.org/rfc/rfc6902) JSON Patch against the tools/list document that removes every offending `$schema` and renames snake_case annotation keys. Paths are JSON Pointers into `{"tools": [...]}` (or into the array, or into `result.tools`, matching the shape of a file target). For a server built with the Python SDK 2.x conventions ([`tests/fixtures/tools/snake.json`](tests/fixtures/tools/snake.json)):
 
 ```text
-$ npx mcp-tools-lint tests/fixtures/tools/snake.json --fix
+$ npx @basitalisandhu/mcp-tools-lint tests/fixtures/tools/snake.json --fix
 ...
 6 errors, 0 warnings, 0 infos (6 fixable with --fix)
 wrote 6 patch operations to tests/fixtures/tools/snake.json.patch.json
@@ -169,7 +204,7 @@ wrote 6 patch operations to tests/fixtures/tools/snake.json.patch.json
 ### JSON output
 
 ```bash
-npx mcp-tools-lint tools.json --format json
+npx @basitalisandhu/mcp-tools-lint tools.json --format json
 ```
 
 ```json
@@ -199,7 +234,7 @@ npx mcp-tools-lint tools.json --format json
 ### SARIF and GitHub code scanning
 
 ```bash
-npx mcp-tools-lint --format sarif --out mcp-tools-lint.sarif --sarif-location src/index.ts -- node dist/index.js
+npx @basitalisandhu/mcp-tools-lint --format sarif --out mcp-tools-lint.sarif --sarif-location src/index.ts -- node dist/index.js
 ```
 
 The output is SARIF 2.1.0 with one `reportingDescriptor` per rule id, `error`, `warning` and `note` levels, a stable `partialFingerprints` entry per finding, and the RFC 6902 operation attached as a `fix` description where one exists. Each result carries a physical location (the file target, the first existing file among a stdio command's arguments, or whatever `--sarif-location` names) so GitHub code scanning shows it as an alert, plus a logical location with the tool name and the JSON Pointer.
@@ -229,7 +264,7 @@ jobs:
             API_TOKEN=${{ secrets.API_TOKEN }}
 ```
 
-Inputs: `target`, `command`, `env`, `headers`, `sarif-file`, `sarif-location`, `fail-on`, `upload` (set `false` to skip the code scanning upload), `patch-file`, `timeout`, `node-version`, `version` (npm version to run; empty builds the action's own checkout). Outputs: `sarif-file`, `exit-code`, `errors`, `warnings`. The job summary gets the text report. See [action/action.yml](action/action.yml).
+Inputs: `target`, `command`, `env`, `headers`, `sarif-file`, `sarif-location`, `fail-on`, `upload` (set `false` to skip the code scanning upload), `patch-file`, `timeout`, `node-version`, `version` (version of `@basitalisandhu/mcp-tools-lint` to install from GitHub Packages; empty builds the action's own checkout), `token` (used for that install; defaults to the workflow token, which must be able to read packages). Outputs: `sarif-file`, `exit-code`, `errors`, `warnings`. The job summary gets the text report. See [action/action.yml](action/action.yml).
 
 ### Exit codes
 
@@ -242,7 +277,7 @@ Inputs: `target`, `command`, `env`, `headers`, `sarif-file`, `sarif-location`, `
 ### As a library
 
 ```ts
-import { lintTools, locateTools, applyPatch, checkTool } from 'mcp-tools-lint';
+import { lintTools, locateTools, applyPatch, checkTool } from '@basitalisandhu/mcp-tools-lint';
 
 const doc = locateTools(JSON.parse(text));       // {"tools": [...]}, an array, or a JSON-RPC response
 const result = lintTools(doc, 'tools.json');     // { findings, patch, summary, tools }
