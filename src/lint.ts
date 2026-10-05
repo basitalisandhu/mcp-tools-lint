@@ -53,7 +53,7 @@ export function summarise(findings: readonly { severity: string }[]): Summary {
 }
 
 /** Lint every tool in a located document. Pure apart from the input. */
-export function lintTools(doc: ToolsDocument, target: string): LintResult {
+export function lintTools(doc: ToolsDocument, target: string, ignoredRules: readonly string[] = []): LintResult {
   const findings: ToolFinding[] = [];
   const patch: PatchOp[] = [];
   doc.tools.forEach((raw, index) => {
@@ -61,6 +61,7 @@ export function lintTools(doc: ToolsDocument, target: string): LintResult {
     const name = typeof tool.name === 'string' && tool.name !== '' ? tool.name : `#${index}`;
     const toolPointer = joinPointer(doc.basePointer, String(index));
     for (const finding of checkTool(tool)) {
+      if (ignoredRules.includes(finding.ruleId)) continue;
       findings.push({ ...finding, tool: name, toolIndex: index, pointer: toolPointer + finding.path });
       if (finding.fix) patch.push(...rebase(finding.fix, toolPointer));
     }

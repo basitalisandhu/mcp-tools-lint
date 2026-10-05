@@ -51,6 +51,7 @@ Options
       --sarif-location <uri>       artifact URI used in SARIF results (default: the file target,
                                    or the first existing file among a stdio command's arguments)
       --rules                      list the rules and exit
+      --ignore-rule <id>           suppress a rule and its fixes (repeatable)
   -v, --version                    print the version and exit
   -h, --help                       show this help
 
@@ -158,6 +159,7 @@ const ARG_CONFIG = {
     timeout: { type: 'string' },
     'sarif-location': { type: 'string' },
     rules: { type: 'boolean', default: false },
+    'ignore-rule': { type: 'string', multiple: true },
     version: { type: 'boolean', short: 'v', default: false },
     help: { type: 'boolean', short: 'h', default: false },
   },
@@ -211,8 +213,13 @@ export async function main(argv: string[]): Promise<number> {
     const env = parseKeyValue(values.env ?? [], '-e', '=');
     const headers = parseKeyValue(values.header ?? [], '-H', ':');
 
+    const ignoredRules = values['ignore-rule'] ?? [];
+    const validIds = rules.map((rule) => rule.id);
+    const unknown = ignoredRules.filter((id) => !validIds.some((valid) => valid === id));
+    if (unknown.length) throw new UsageError(`unknown rule ${unknown.join(', ')}; valid IDs: ${validIds.join(', ')}`);
+
     const doc = await loadTools(target, { env, headers, timeoutMs });
-    const result = lintTools(doc, describeTarget(target));
+    const result = lintTools(doc, describeTarget(target), ignoredRules);
 
     let report: string;
     if (format === 'json') report = formatJson(result);
@@ -220,6 +227,7 @@ export async function main(argv: string[]): Promise<number> {
       report = formatSarif(result, {
         toolVersion: await readVersion(),
         artifactUri: values['sarif-location'] ?? defaultSarifLocation(target),
+        ignoredRules,
       });
     } else report = formatText(result);
 

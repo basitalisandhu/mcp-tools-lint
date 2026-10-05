@@ -6,7 +6,9 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- Repeatable `--ignore-rule <id>` suppression, with unknown-ID validation, omitted fixes and disabled SARIF rule descriptors.
 
 ## [0.1.1] - 2026-10-06
 
