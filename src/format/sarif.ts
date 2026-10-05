@@ -7,6 +7,7 @@ export interface SarifOptions {
   toolVersion: string;
   /** URI (relative to the repository root when possible) that results point at. */
   artifactUri: string;
+  ignoredRules?: readonly string[];
 }
 
 const LEVEL: Record<Severity, 'error' | 'warning' | 'note'> = {
@@ -41,7 +42,10 @@ export function formatSarif(result: LintResult, options: SarifOptions): string {
               shortDescription: { text: rule.description },
               fullDescription: { text: rule.description },
               help: { text: rule.fix },
-              defaultConfiguration: { level: LEVEL[rule.severity] },
+              defaultConfiguration: {
+                level: LEVEL[rule.severity],
+                ...(options.ignoredRules?.includes(rule.id) ? { enabled: false } : {}),
+              },
               properties: { tags: ['mcp', 'json-schema'] },
             })),
           },

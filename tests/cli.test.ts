@@ -120,6 +120,40 @@ describe('--write', () => {
   });
 });
 
+describe('--ignore-rule', () => {
+  it('removes findings and fixes from the draft-07 stdio fixture', async () => {
+    const copy = await tempCopy('draft07');
+    tempDirs.push(copy.dir);
+    const patch = join(copy.dir, 'ignored.patch.json');
+    const run = await runCli(['--ignore-rule', 'dialect-2020-12', '--fix', '--patch-out', patch, '--format', 'json', '--', process.execPath, serverScript('draft07')]);
+    expect(run.code).toBe(0);
+    expect(parseReport(run.stdout).findings).toEqual([]);
+    expect(parseReport(run.stdout).patch).toEqual([]);
+    expect(await readFile(patch, 'utf8')).toBe('[]\n');
+  });
+
+  it('rejects unknown rule IDs before reading a target', async () => {
+    const run = await runCli(['missing.json', '--ignore-rule', 'not-a-rule']);
+    expect(run.code).toBe(2);
+    expect(run.stderr).toContain('unknown rule');
+    expect(run.stderr).toContain('dialect-2020-12');
+    expect(run.stderr).toContain('description-missing');
+  });
+
+  it('accepts repeated flags and keeps disabled descriptors in SARIF', async () => {
+    const run = await runCli([toolsFile('boolean'), '--ignore-rule', 'description-missing', '--ignore-rule', 'missing-annotations', '--format', 'sarif']);
+    expect(run.code).toBe(1);
+    const sarif = JSON.parse(run.stdout);
+    const rules = sarif.runs[0].tool.driver.rules;
+    expect(rules).toHaveLength(9);
+    for (const id of ['description-missing', 'missing-annotations']) {
+      expect(rules.find((r: { id: string }) => r.id === id).defaultConfiguration.enabled).toBe(false);
+      expect(sarif.runs[0].results.some((r: { ruleId: string }) => r.ruleId === id)).toBe(false);
+    }
+    expect(sarif.runs[0].results.length).toBe(8);
+  });
+});
+
 describe('text output', () => {
   it('groups findings by tool and ends with a summary line', async () => {
     const run = await runCli([toolsFile('boolean')]);

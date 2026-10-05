@@ -30,7 +30,7 @@ Annotations are the second half. The MCP blog's post on tool annotations says co
 | `snake-case-annotation-keys` | error | `annotations` contains `read_only_hint`, `destructive_hint`, `idempotent_hint` or `open_world_hint`. | renames to camelCase (or removes the duplicate when the camelCase key already exists) |
 | `description-missing` | info | The tool has no description. | no |
 
-`mcp-tools-lint --rules` prints the same list. Rules are pure functions `(tool) => Finding[]` in [`src/rules.ts`](src/rules.ts); the verb lists are deliberately short to keep false positives down.
+`mcp-tools-lint --rules` prints the same list. Use repeatable `--ignore-rule <id>` flags to suppress known findings and their fixes; unknown IDs exit 2. SARIF keeps suppressed rule descriptors, disabled, so their indices remain stable. Rules are pure functions `(tool) => Finding[]` in [`src/rules.ts`](src/rules.ts); the verb lists are deliberately short to keep false positives down.
 
 ## Install
 
@@ -104,7 +104,9 @@ npx @basitalisandhu/mcp-tools-lint tools.json
 
 Options go before the target; everything after `--` belongs to the server command. The tool calls `initialize` and `tools/list` (following `nextCursor`) with a 20 second timeout (`--timeout <seconds>`), and never calls a tool. It reads the raw `tools/list` payload rather than the SDK's parsed version, because the SDK's own parser would reject a boolean property schema and silently drop snake_case annotation keys, which are exactly the things to report.
 
-Options: `--format text|json|sarif`, `--out <file>`, `--fix`, `--patch-out <file>`, `--write`, `--fail-on error|warning|info|none` (default `error`), `--sarif-location <uri>`, `--rules`, `--version`.
+Options: `--format text|json|sarif`, `--out <file>`, `--fix`, `--patch-out <file>`, `--write`, `--fail-on error|warning|info|none` (default `error`), `--ignore-rule <id>` (repeatable), `--sarif-location <uri>`, `--rules`, `--version`.
+
+Use `--ignore-rule dialect-2020-12` to suppress one known rule without changing the failure threshold for other rules. Repeat the flag to suppress more rules. Ignored findings and their patch operations are omitted; SARIF retains the rule descriptor with `defaultConfiguration.enabled: false`. Unknown IDs are usage errors (exit 2); `--rules` lists valid IDs.
 
 ### Example output
 
