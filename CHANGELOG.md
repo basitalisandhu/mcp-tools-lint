@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-09
+
 ### Added
 
 - Repeatable `--ignore-rule <id>` suppression, with unknown-ID validation, omitted fixes and disabled SARIF rule descriptors.
@@ -47,6 +49,7 @@ First release. Published to two registries on GitHub Packages, using only the wo
 
 - The `mcp-tools-lint` command did nothing when started through the symlink that `npm install` and `npx` create in `node_modules/.bin`; the entry point now compares real paths. A test starts the CLI through a symlink.
 
-[Unreleased]: https://github.com/basitalisandhu/mcp-tools-lint/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/basitalisandhu/mcp-tools-lint/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/basitalisandhu/mcp-tools-lint/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/basitalisandhu/mcp-tools-lint/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/basitalisandhu/mcp-tools-lint/releases/tag/v0.1.0
