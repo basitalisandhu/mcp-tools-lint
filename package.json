@@ -58,7 +58,7 @@
     "lint:fixtures": "node dist/cli.js tests/fixtures/tools/clean.json"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.32.0",
+    "@modelcontextprotocol/sdk": "^1.32.1",
     "zod": "^3.25.0 || ^4.0.0"
   },
   "devDependencies": {
