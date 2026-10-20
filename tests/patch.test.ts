@@ -67,6 +67,38 @@ describe('applyPatch', () => {
     expect(() => applyPatch([1], [{ op: 'remove', path: '/5' }])).toThrow(/does not exist/);
   });
 
+  it('never walks into or replaces an object prototype through __proto__', () => {
+    expect(() => applyPatch({ a: {} }, [{ op: 'add', path: '/__proto__/polluted', value: 'yes' }])).toThrow(
+      /does not exist/,
+    );
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+    const out = applyPatch({ a: {} }, [{ op: 'add', path: '/a/__proto__', value: { x: 1 } }]) as {
+      a: Record<string, unknown>;
+    };
+    expect(Object.getPrototypeOf(out.a)).toBe(Object.prototype);
+    expect(JSON.stringify(out)).toBe('{"a":{"__proto__":{"x":1}}}');
+  });
+
+  it('works on a document that has its own __proto__ key, as JSON.parse produces', () => {
+    const doc = JSON.parse('{"properties":{"__proto__":{"$schema":"x","type":"string"}}}');
+    const out = applyPatch(doc, [{ op: 'remove', path: '/properties/__proto__/$schema' }]);
+    expect(JSON.stringify(out)).toBe('{"properties":{"__proto__":{"type":"string"}}}');
+  });
+
+  it('rejects array indices with leading zeros or signs, and moves into a child', () => {
+    expect(() => applyPatch({ a: [1, 2] }, [{ op: 'remove', path: '/a/01' }])).toThrow(/does not exist/);
+    expect(() => applyPatch({ a: [[1]] }, [{ op: 'remove', path: '/a/-0/0' }])).toThrow(/does not exist/);
+    expect(() => applyPatch({ a: [1] }, [{ op: 'add', path: '/a/3', value: 2 }])).toThrow(/out of bounds/);
+    expect(applyPatch({ a: [1, 3] }, [{ op: 'add', path: '/a/1', value: 2 }])).toEqual({ a: [1, 2, 3] });
+    expect(applyPatch({ a: [1, 2] }, [{ op: 'replace', path: '/a/1', value: 5 }])).toEqual({ a: [1, 5] });
+    expect(() => applyPatch({ a: [1] }, [{ op: 'replace', path: '/a/1', value: 5 }])).toThrow(/does not exist/);
+    expect(() => applyPatch({ a: { b: 1 } }, [{ op: 'move', from: '/a', path: '/a/b/c' }])).toThrow(
+      /own child/,
+    );
+    expect(() => applyPatch({ a: 1 }, [{ op: 'remove', path: '' }])).toThrow(/document root/);
+    expect(() => applyPatch({ a: 1 }, [{ op: 'remove', path: '/a/b' }])).toThrow(/does not exist/);
+  });
+
   it('formats the patch exactly as --fix writes it', () => {
     expect(formatPatch([])).toBe('[]\n');
     expect(formatPatch([{ op: 'remove', path: '/x' }])).toBe('[\n  {\n    "op": "remove",\n    "path": "/x"\n  }\n]\n');
