@@ -8,6 +8,8 @@ fixture or a unit test.
 
 ## 1. Add `--ignore-rule <id>` to switch a rule off
 
+**Status.** Done in 0.2.0.
+
 **Context.** A team that knowingly ships tools without descriptions, or that lints a
 third-party server it cannot change, wants to silence one rule without lowering
 `--fail-on` for everything.
@@ -44,6 +46,8 @@ so compiling each schema costs no new dependency.
   whose `$ref` points at a missing `$defs` entry; the clean fixture stays clean.
 
 ## 3. Support legacy SSE servers with `--transport sse`
+
+**Status.** Done in 0.3.0 (#13, #25).
 
 **Context.** The CLI connects to HTTP targets with the Streamable HTTP transport. Servers
 that still speak the 2024-11-05 HTTP+SSE transport answer `405` or hang.

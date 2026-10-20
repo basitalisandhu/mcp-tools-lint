@@ -75,8 +75,8 @@ GitHub's npm registry asks for a token even to install public packages. That is 
 
 ```bash
 npx @basitalisandhu/mcp-tools-lint --help              # run without installing
-npm install -g @basitalisandhu/mcp-tools-lint@0.2.0    # global CLI, installs the mcp-tools-lint command
-npm install -D @basitalisandhu/mcp-tools-lint@0.2.0    # as a dev dependency of a server project
+npm install -g @basitalisandhu/mcp-tools-lint@0.3.0    # global CLI, installs the mcp-tools-lint command
+npm install -D @basitalisandhu/mcp-tools-lint@0.3.0    # as a dev dependency of a server project
 ```
 
 ### Container image
@@ -84,8 +84,8 @@ npm install -D @basitalisandhu/mcp-tools-lint@0.2.0    # as a dev dependency of 
 The image is built for `linux/amd64` and `linux/arm64`, runs as the non-root `node` user, and is tagged with the version and `latest`; pin the version. The working directory is `/work`, so mount the files to lint there:
 
 ```bash
-docker run --rm -v "$PWD:/work:ro" ghcr.io/basitalisandhu/mcp-tools-lint:0.2.0 tools.json
-docker run --rm ghcr.io/basitalisandhu/mcp-tools-lint:0.2.0 https://mcp.example.com/mcp -H "Authorization: Bearer $TOKEN"
+docker run --rm -v "$PWD:/work:ro" ghcr.io/basitalisandhu/mcp-tools-lint:0.3.0 tools.json
+docker run --rm ghcr.io/basitalisandhu/mcp-tools-lint:0.3.0 https://mcp.example.com/mcp -H "Authorization: Bearer $TOKEN"
 ```
 
 A stdio target runs inside the container, so it only works for a server command the image can start (Node.js is available; mount the server's files). To write a SARIF file or a patch, mount `/work` read-write.
@@ -93,10 +93,10 @@ A stdio target runs inside the container, so it only works for a server command 
 The image is signed with cosign (keyless) and carries a build provenance attestation; an SPDX SBOM is attached to the GitHub release. To check it before running it:
 
 ```bash
-cosign verify ghcr.io/basitalisandhu/mcp-tools-lint:0.2.0 \
+cosign verify ghcr.io/basitalisandhu/mcp-tools-lint:0.3.0 \
   --certificate-identity-regexp '^https://github.com/basitalisandhu/mcp-tools-lint/\.github/workflows/publish-github-packages\.yml@refs/tags/v' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
-gh attestation verify oci://ghcr.io/basitalisandhu/mcp-tools-lint:0.2.0 --owner basitalisandhu
+gh attestation verify oci://ghcr.io/basitalisandhu/mcp-tools-lint:0.3.0 --owner basitalisandhu
 ```
 
 To build the image from a checkout: `docker build -t mcp-tools-lint .`
@@ -284,7 +284,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - run: npm ci && npm run build
-      - uses: basitalisandhu/mcp-tools-lint/action@v0.2.0   # pin a release tag
+      - uses: basitalisandhu/mcp-tools-lint/action@v0.3.0   # pin a release tag
         with:
           command: node dist/index.js        # or target: tools.json / https://host/mcp
           sarif-location: src/index.ts
