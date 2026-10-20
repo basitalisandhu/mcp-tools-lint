@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-20
+
 ### Added
 
 - `--transport streamable-http|sse` for HTTP targets (default `streamable-http`). `sse` connects with the SDK's HTTP+SSE client for servers that still speak the 2024-11-05 transport; `-H` headers are sent on the event stream and on every message POST. Passing it with a file or stdio target is a usage error. (#13)
@@ -63,7 +65,8 @@ First release. Published to two registries on GitHub Packages, using only the wo
 
 - The `mcp-tools-lint` command did nothing when started through the symlink that `npm install` and `npx` create in `node_modules/.bin`; the entry point now compares real paths. A test starts the CLI through a symlink.
 
-[Unreleased]: https://github.com/basitalisandhu/mcp-tools-lint/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/basitalisandhu/mcp-tools-lint/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/basitalisandhu/mcp-tools-lint/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/basitalisandhu/mcp-tools-lint/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/basitalisandhu/mcp-tools-lint/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/basitalisandhu/mcp-tools-lint/releases/tag/v0.1.0
