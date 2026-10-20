@@ -1,14 +1,20 @@
 import { readFile } from 'node:fs/promises';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport, getDefaultEnvironment } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import * as z from 'zod/v4';
 import { locateTools, type ToolsDocument } from './lint.js';
+import { PACKAGE_VERSION } from './version.js';
 
 export type Target =
   | { kind: 'file'; path: string }
-  | { kind: 'http'; url: string }
+  | { kind: 'http'; url: string; transport?: HttpTransport }
   | { kind: 'stdio'; command: string; args: string[] };
+
+/** How to talk to an HTTP target: Streamable HTTP (current spec) or the 2024-11-05 HTTP+SSE transport. */
+export type HttpTransport = 'streamable-http' | 'sse';
+export const HTTP_TRANSPORTS: readonly HttpTransport[] = ['streamable-http', 'sse'];
 
 export interface LoadOptions {
   /** Extra environment for a stdio server, merged over the SDK's default environment. */
@@ -90,10 +96,10 @@ async function listAllTools(client: Client, timeoutMs: number): Promise<unknown[
 
 async function loadLive(target: Exclude<Target, { kind: 'file' }>, options: LoadOptions): Promise<ToolsDocument> {
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
-  const client = new Client({ name: 'mcp-tools-lint', version: '0.2.0' }, { capabilities: {} });
+  const client = new Client({ name: 'mcp-tools-lint', version: PACKAGE_VERSION }, { capabilities: {} });
   const stderrTail: string[] = [];
 
-  let transport: StdioClientTransport | StreamableHTTPClientTransport;
+  let transport: StdioClientTransport | StreamableHTTPClientTransport | SSEClientTransport;
   if (target.kind === 'stdio') {
     transport = new StdioClientTransport({
       command: target.command,
@@ -114,9 +120,13 @@ async function loadLive(target: Exclude<Target, { kind: 'file' }>, options: Load
     } catch {
       throw new ConnectionError(`invalid URL ${JSON.stringify(target.url)}`);
     }
-    transport = new StreamableHTTPClientTransport(url, {
-      requestInit: options.headers && Object.keys(options.headers).length > 0 ? { headers: options.headers } : undefined,
-    });
+    // The SSE transport applies requestInit headers to the event stream and to every POST.
+    const requestInit =
+      options.headers && Object.keys(options.headers).length > 0 ? { headers: options.headers } : undefined;
+    transport =
+      target.transport === 'sse'
+        ? new SSEClientTransport(url, { requestInit })
+        : new StreamableHTTPClientTransport(url, { requestInit });
   }
 
   try {
