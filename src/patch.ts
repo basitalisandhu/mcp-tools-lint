@@ -11,13 +11,30 @@ function clone<T>(value: T): T {
   return value === undefined ? value : (JSON.parse(JSON.stringify(value)) as T);
 }
 
+function hasOwn(node: object, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(node, key);
+}
+
+/** An array index token per RFC 6901: "0" or digits without a leading zero. */
+function arrayIndex(token: string): number {
+  return /^(0|[1-9][0-9]*)$/.test(token) ? Number(token) : Number.NaN;
+}
+
 function resolveParent(doc: unknown, pointer: string): { parent: Container; key: string } {
   const tokens = parsePointer(pointer);
   if (tokens.length === 0) throw new Error('cannot operate on the document root');
   let node: unknown = doc;
   for (const token of tokens.slice(0, -1)) {
     if (!isContainer(node)) throw new Error(`path ${pointer} does not exist`);
-    node = Array.isArray(node) ? node[Number(token)] : node[token];
+    if (Array.isArray(node)) {
+      const index = arrayIndex(token);
+      if (!(index < node.length)) throw new Error(`path ${pointer} does not exist`);
+      node = node[index];
+    } else {
+      // Own properties only: never walk into Object.prototype through "__proto__".
+      if (!hasOwn(node, token)) throw new Error(`path ${pointer} does not exist`);
+      node = node[token];
+    }
   }
   if (!isContainer(node)) throw new Error(`path ${pointer} does not exist`);
   return { parent: node, key: tokens[tokens.length - 1] as string };
@@ -26,26 +43,22 @@ function resolveParent(doc: unknown, pointer: string): { parent: Container; key:
 function getAt(doc: unknown, pointer: string): unknown {
   const { parent, key } = resolveParent(doc, pointer);
   if (Array.isArray(parent)) {
-    const index = Number(key);
-    if (!Number.isInteger(index) || index < 0 || index >= parent.length) {
-      throw new Error(`path ${pointer} does not exist`);
-    }
+    const index = arrayIndex(key);
+    if (!(index < parent.length)) throw new Error(`path ${pointer} does not exist`);
     return parent[index];
   }
-  if (!Object.prototype.hasOwnProperty.call(parent, key)) throw new Error(`path ${pointer} does not exist`);
+  if (!hasOwn(parent, key)) throw new Error(`path ${pointer} does not exist`);
   return parent[key];
 }
 
 function removeAt(doc: unknown, pointer: string): unknown {
   const { parent, key } = resolveParent(doc, pointer);
   if (Array.isArray(parent)) {
-    const index = Number(key);
-    if (!Number.isInteger(index) || index < 0 || index >= parent.length) {
-      throw new Error(`path ${pointer} does not exist`);
-    }
+    const index = arrayIndex(key);
+    if (!(index < parent.length)) throw new Error(`path ${pointer} does not exist`);
     return parent.splice(index, 1)[0];
   }
-  if (!Object.prototype.hasOwnProperty.call(parent, key)) throw new Error(`path ${pointer} does not exist`);
+  if (!hasOwn(parent, key)) throw new Error(`path ${pointer} does not exist`);
   const value = parent[key];
   delete parent[key];
   return value;
@@ -58,21 +71,24 @@ function addAt(doc: unknown, pointer: string, value: unknown): void {
       parent.push(value);
       return;
     }
-    const index = Number(key);
-    if (!Number.isInteger(index) || index < 0 || index > parent.length) {
-      throw new Error(`path ${pointer} is out of bounds`);
-    }
+    const index = arrayIndex(key);
+    if (!(index <= parent.length)) throw new Error(`path ${pointer} is out of bounds`);
     parent.splice(index, 0, value);
     return;
   }
-  parent[key] = value;
+  setOwn(parent, key, value);
+}
+
+/** Define an own, enumerable property, so "__proto__" is a key and not the prototype. */
+function setOwn(target: Record<string, unknown>, key: string, value: unknown): void {
+  Object.defineProperty(target, key, { value, writable: true, enumerable: true, configurable: true });
 }
 
 function replaceAt(doc: unknown, pointer: string, value: unknown): void {
   getAt(doc, pointer); // must exist
   const { parent, key } = resolveParent(doc, pointer);
-  if (Array.isArray(parent)) parent[Number(key)] = value;
-  else parent[key] = value;
+  if (Array.isArray(parent)) parent[arrayIndex(key)] = value;
+  else setOwn(parent, key, value);
 }
 
 /**
@@ -87,6 +103,9 @@ export function applyPatch(document: unknown, ops: PatchOp[]): unknown {
         removeAt(doc, op.path);
         break;
       case 'move': {
+        if (op.path.startsWith(op.from + '/')) {
+          throw new Error(`cannot move ${op.from} into its own child ${op.path}`);
+        }
         const value = removeAt(doc, op.from);
         addAt(doc, op.path, value);
         break;

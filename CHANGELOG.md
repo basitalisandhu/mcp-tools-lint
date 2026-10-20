@@ -6,6 +6,11 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- `applyPatch` (exported from the package and used by `--write`) walked into `Object.prototype` when a path went through `__proto__`, so a patch such as `{"op": "add", "path": "/__proto__/x"}` changed every object in the process, and `add` or `replace` of a `__proto__` key replaced the object's prototype instead of setting a key. Paths now follow own properties only and keys are defined as own properties, so a schema property that is really named `__proto__` is patched like any other.
+- `applyPatch` rejects array index tokens with leading zeros or signs (`/01`, `/-0`), as RFC 6901 requires, and a `move` into a child of its own `from` location, as RFC 6902 requires.
+
 ## [0.2.0] - 2026-10-09
 
 ### Added
