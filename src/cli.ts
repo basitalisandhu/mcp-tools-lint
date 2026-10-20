@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { existsSync, realpathSync } from 'node:fs';
-import { readFile, writeFile } from 'node:fs/promises';
+import { writeFile } from 'node:fs/promises';
 import { basename, relative, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs, type ParseArgsConfig } from 'node:util';
@@ -8,7 +8,16 @@ import { formatJson } from './format/json.js';
 import { formatSarif } from './format/sarif.js';
 import { formatText } from './format/text.js';
 import { lintTools, locateTools } from './lint.js';
-import { ConnectionError, DEFAULT_TIMEOUT_MS, describeTarget, loadTools, type Target } from './load.js';
+import {
+  ConnectionError,
+  DEFAULT_TIMEOUT_MS,
+  HTTP_TRANSPORTS,
+  describeTarget,
+  loadTools,
+  type HttpTransport,
+  type Target,
+} from './load.js';
+import { PACKAGE_VERSION } from './version.js';
 import { applyPatch, formatPatch } from './patch.js';
 import { rules } from './rules.js';
 import type { LintResult, Severity } from './types.js';
@@ -46,7 +55,10 @@ Options
       --fail-on <error|warning|info|none>
                                    lowest severity that exits 1 (default: error)
   -e, --env KEY=VALUE              extra environment for a stdio server (repeatable)
-  -H, --header "Name: value"       extra HTTP header for a Streamable HTTP server (repeatable)
+  -H, --header "Name: value"       extra HTTP header for an HTTP server (repeatable)
+      --transport <streamable-http|sse>
+                                   HTTP transport (default: streamable-http); sse is the
+                                   2024-11-05 HTTP+SSE transport of older servers
       --timeout <seconds>          initialize and tools/list timeout (default: ${DEFAULT_TIMEOUT_MS / 1000})
       --sarif-location <uri>       artifact URI used in SARIF results (default: the file target,
                                    or the first existing file among a stdio command's arguments)
@@ -60,16 +72,6 @@ Exit codes
   1  at least one finding at or above --fail-on
   2  the target could not be read or reached, or the arguments were invalid
 `;
-}
-
-async function readVersion(): Promise<string> {
-  try {
-    const raw = await readFile(new URL('../package.json', import.meta.url), 'utf8');
-    const parsed = JSON.parse(raw) as { version?: string };
-    return parsed.version ?? '0.0.0';
-  } catch {
-    return '0.0.0';
-  }
 }
 
 function parseKeyValue(entries: string[], flag: string, separator: string): Record<string, string> {
@@ -156,6 +158,7 @@ const ARG_CONFIG = {
     'fail-on': { type: 'string', default: 'error' },
     env: { type: 'string', short: 'e', multiple: true },
     header: { type: 'string', short: 'H', multiple: true },
+    transport: { type: 'string' },
     timeout: { type: 'string' },
     'sarif-location': { type: 'string' },
     rules: { type: 'boolean', default: false },
@@ -180,7 +183,7 @@ export async function main(argv: string[]): Promise<number> {
     return EXIT_OK;
   }
   if (values.version) {
-    process.stdout.write(`${await readVersion()}\n`);
+    process.stdout.write(`${PACKAGE_VERSION}\n`);
     return EXIT_OK;
   }
   if (values.rules) {
@@ -200,6 +203,13 @@ export async function main(argv: string[]): Promise<number> {
       else before.push(t.value);
     });
     const target = resolveTarget(before, after);
+    if (values.transport !== undefined) {
+      if (!HTTP_TRANSPORTS.includes(values.transport as HttpTransport)) {
+        throw new UsageError(`--transport must be one of ${HTTP_TRANSPORTS.join(', ')}`);
+      }
+      if (target.kind !== 'http') throw new UsageError('--transport applies only to an http(s) URL target');
+      target.transport = values.transport as HttpTransport;
+    }
 
     const format = values.format;
     if (!FORMATS.includes(format as Format)) throw new UsageError(`--format must be one of ${FORMATS.join(', ')}`);
@@ -225,7 +235,7 @@ export async function main(argv: string[]): Promise<number> {
     if (format === 'json') report = formatJson(result);
     else if (format === 'sarif') {
       report = formatSarif(result, {
-        toolVersion: await readVersion(),
+        toolVersion: PACKAGE_VERSION,
         artifactUri: values['sarif-location'] ?? defaultSarifLocation(target),
         ignoredRules,
       });

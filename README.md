@@ -1,12 +1,36 @@
 # mcp-tools-lint
 
-Lint MCP tool schemas and annotations before clients reject them. Point it at a running MCP server (stdio or Streamable HTTP) or at a saved `tools/list` result, and it checks every tool against what Claude Code and other strict clients accept: JSON Schema 2020-12 only, no boolean schemas, `required` names that exist, and annotations that are present, camelCase and not self-contradictory. It prints text, JSON or SARIF, writes an RFC 6902 patch for the fixable findings, and ships as a GitHub Action.
+Lint MCP tool schemas and annotations before clients reject them. Point it at a running MCP server (stdio, Streamable HTTP or the older HTTP+SSE transport) or at a saved `tools/list` result, and it checks every tool against what Claude Code and other strict clients accept: JSON Schema 2020-12 only, no boolean schemas, `required` names that exist, and annotations that are present, camelCase and not self-contradictory. It prints text, JSON or SARIF, writes an RFC 6902 patch for the fixable findings, and ships as a GitHub Action.
 
 Built alongside [dev-mcp-servers](https://github.com/basitalisandhu/dev-mcp-servers).
 
 [![CI](https://github.com/basitalisandhu/mcp-tools-lint/actions/workflows/ci.yml/badge.svg)](https://github.com/basitalisandhu/mcp-tools-lint/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Node 20+](https://img.shields.io/badge/node-20%2B-blue.svg)](package.json)
+
+**Who it is for:** authors of MCP servers who want CI to catch the schema and annotation mistakes that make Claude Code and other strict clients reject their tools, and people choosing a third-party server who want to know before installing it.
+
+### Quick start
+
+```bash
+git clone https://github.com/basitalisandhu/mcp-tools-lint && cd mcp-tools-lint
+npm install && npm run build
+node dist/cli.js -- node tests/fixtures/servers/draft07.mjs     # or: node dist/cli.js tools.json, or an https:// URL
+```
+
+The last line lints a bundled fixture server built with the TypeScript SDK's defaults. A real run (first tool shown):
+
+```text
+node tests/fixtures/servers/draft07.mjs: 2 tools
+
+  read_file
+    error    dialect-2020-12  inputSchema declares dialect "http://json-schema.org/draft-07/schema#"; the default validator in Claude Code supports JSON Schema 2020-12 only  [fixable]
+                              at /tools/0/inputSchema/$schema
+...
+5 errors, 0 warnings, 0 infos (5 fixable with --fix)
+```
+
+The npm package and container image are on GitHub Packages; see [Install](#install). Project site: https://basitalisandhu.github.io/mcp-tools-lint/. Related: [mcp-egress](https://github.com/basitalisandhu/mcp-egress) records which hosts the same server contacts at run time.
 
 ## Why now
 
@@ -96,6 +120,9 @@ npx @basitalisandhu/mcp-tools-lint -e GITHUB_TOKEN=ghp_xxx -- npx -y @modelconte
 
 # 2. A Streamable HTTP server. -H adds request headers.
 npx @basitalisandhu/mcp-tools-lint https://mcp.example.com/mcp -H "Authorization: Bearer $TOKEN"
+#    A server that still speaks the 2024-11-05 HTTP+SSE transport (it answers 405 or
+#    hangs on Streamable HTTP): point at its event-stream URL and add --transport sse.
+npx @basitalisandhu/mcp-tools-lint https://mcp.example.com/sse --transport sse -H "Authorization: Bearer $TOKEN"
 
 # 3. A JSON file holding a tools/list result ({"tools": [...]}, a bare array,
 #    or a whole JSON-RPC response with result.tools).
@@ -104,7 +131,7 @@ npx @basitalisandhu/mcp-tools-lint tools.json
 
 Options go before the target; everything after `--` belongs to the server command. The tool calls `initialize` and `tools/list` (following `nextCursor`) with a 20 second timeout (`--timeout <seconds>`), and never calls a tool. It reads the raw `tools/list` payload rather than the SDK's parsed version, because the SDK's own parser would reject a boolean property schema and silently drop snake_case annotation keys, which are exactly the things to report.
 
-Options: `--format text|json|sarif`, `--out <file>`, `--fix`, `--patch-out <file>`, `--write`, `--fail-on error|warning|info|none` (default `error`), `--ignore-rule <id>` (repeatable), `--sarif-location <uri>`, `--rules`, `--version`.
+Options: `--format text|json|sarif`, `--transport streamable-http|sse` (HTTP targets only; `-H` headers go on the event stream and on every message POST), `--out <file>`, `--fix`, `--patch-out <file>`, `--write`, `--fail-on error|warning|info|none` (default `error`), `--ignore-rule <id>` (repeatable), `--sarif-location <uri>`, `--rules`, `--version`.
 
 Use `--ignore-rule dialect-2020-12` to suppress one known rule without changing the failure threshold for other rules. Repeat the flag to suppress more rules. Ignored findings and their patch operations are omitted; SARIF retains the rule descriptor with `defaultConfiguration.enabled: false`. Unknown IDs are usage errors (exit 2); `--rules` lists valid IDs.
 
