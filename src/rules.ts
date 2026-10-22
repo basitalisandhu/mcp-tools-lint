@@ -1,4 +1,5 @@
 import { joinPointer } from './pointer.js';
+import { schemaCompilationFindings } from './compile.js';
 import { isObject, walkSchema } from './schema.js';
 import type { Finding, Rule, Tool } from './types.js';
 
@@ -288,6 +289,13 @@ export const rules: readonly Rule[] = [
   destructiveWithoutHint,
   snakeCaseAnnotationKeys,
   descriptionMissing,
+  {
+    id: 'schema-compiles',
+    severity: 'error',
+    description: 'Input and output schemas must compile as JSON Schema 2020-12 using local references.',
+    fix: 'Correct malformed keywords, patterns, or local references; external references are not fetched.',
+    check: schemaCompilationFindings,
+  },
 ];
 
 /** Run every rule against one tool. Pure: no I/O, same input gives the same findings. */
