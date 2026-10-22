@@ -56,9 +56,7 @@ Annotations are the second half. The MCP blog's post on tool annotations says co
 
 `mcp-tools-lint --rules` prints the same list. Use repeatable `--ignore-rule <id>` flags to suppress known findings and their fixes; unknown IDs exit 2. SARIF keeps suppressed rule descriptors, disabled, so their indices remain stable. Rules are pure functions `(tool) => Finding[]` in [`src/rules.ts`](src/rules.ts); the verb lists are deliberately short to keep false positives down.
 
-## Install
-
-### Adopt incrementally with a baseline
+## Adopt incrementally with a baseline
 
 ```bash
 node dist/cli.js tools.json --format json --out baseline.json --fail-on none
@@ -66,6 +64,8 @@ node dist/cli.js tools.json --baseline baseline.json --new-only --fail-on error
 ```
 
 `--baseline` accepts a saved JSON report and records counts of existing, new and resolved findings. Without `--new-only`, all current findings still affect output and exit status; with it, only new findings affect output, thresholds and `--fix`/`--write` patches. Matching uses tool name, tool-relative path, rule ID, severity and message, so reordering tools or changing the target path does not recreate findings. Additional identical occurrences remain new. JSON and SARIF findings carry `baselineState`; text includes counts. Missing or malformed baselines and `--new-only` without a baseline exit 2 before contacting a server. Regenerate the baseline deliberately as debt is fixed; it is not a rule-wide allowlist.
+
+## Install
 
 Requires Node.js 20 or newer. The only runtime dependencies are `@modelcontextprotocol/sdk` and its peer `zod`.
 
