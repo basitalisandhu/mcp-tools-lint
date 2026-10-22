@@ -10,6 +10,10 @@ function plural(n: number, word: string): string {
 export function formatText(result: LintResult): string {
   const lines: string[] = [];
   lines.push(`${result.target}: ${plural(result.tools, 'tool')}`);
+  if (result.baseline) {
+    const { existing, new: added, resolved } = result.baseline;
+    lines.push(`Baseline: ${existing} existing, ${added} new, ${resolved} resolved`);
+  }
   const byTool = new Map<string, LintResult['findings']>();
   for (const f of result.findings) {
     const key = `${f.toolIndex}:${f.tool}`;
@@ -24,7 +28,7 @@ export function formatText(result: LintResult): string {
     const sorted = [...findings].sort((a, b) => ORDER[a.severity] - ORDER[b.severity]);
     const widest = Math.max(...sorted.map((f) => f.ruleId.length));
     for (const f of sorted) {
-      const fix = f.fix ? '  [fixable]' : '';
+      const fix = (f.fix ? '  [fixable]' : '') + (f.baselineState ? `  [${f.baselineState}]` : '');
       lines.push(`    ${f.severity.padEnd(7)}  ${f.ruleId.padEnd(widest)}  ${f.message}${fix}`);
       lines.push(`    ${''.padEnd(7)}  ${''.padEnd(widest)}  at ${f.pointer}`);
     }

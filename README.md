@@ -58,6 +58,15 @@ Annotations are the second half. The MCP blog's post on tool annotations says co
 
 ## Install
 
+### Adopt incrementally with a baseline
+
+```bash
+node dist/cli.js tools.json --format json --out baseline.json --fail-on none
+node dist/cli.js tools.json --baseline baseline.json --new-only --fail-on error
+```
+
+`--baseline` accepts a saved JSON report and records counts of existing, new and resolved findings. Without `--new-only`, all current findings still affect output and exit status; with it, only new findings affect output, thresholds and `--fix`/`--write` patches. Matching uses tool name, tool-relative path, rule ID, severity and message, so reordering tools or changing the target path does not recreate findings. Additional identical occurrences remain new. JSON and SARIF findings carry `baselineState`; text includes counts. Missing or malformed baselines and `--new-only` without a baseline exit 2 before contacting a server. Regenerate the baseline deliberately as debt is fixed; it is not a rule-wide allowlist.
+
 Requires Node.js 20 or newer. The only runtime dependencies are `@modelcontextprotocol/sdk` and its peer `zod`.
 
 Every release is published by `publish-github-packages.yml` in two places on GitHub Packages: the npm package `@basitalisandhu/mcp-tools-lint` and the container image `ghcr.io/basitalisandhu/mcp-tools-lint`. The package is not on npmjs.com yet; when it is, it will use the same scoped name.

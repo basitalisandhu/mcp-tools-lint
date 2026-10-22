@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `--baseline report.json` compares findings against a saved JSON report, counting existing, new and resolved findings. `--new-only` limits reports, exit thresholds and fix patches to new findings, allowing incremental CI adoption without rule-wide suppression. Identity uses tool name, relative schema path, rule, severity and message rather than tool index or target; duplicate findings are counted individually. (#14)
+
 ## [0.3.0] - 2026-10-20
 
 ### Added
