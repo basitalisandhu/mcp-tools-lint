@@ -1,6 +1,7 @@
 import type { LintResult } from '../types.js';
 
 export interface JsonReport {
+  baseline?: LintResult['baseline'];
   version: 1;
   target: string;
   tools: number;
@@ -18,6 +19,7 @@ export function formatJson(result: LintResult): string {
     summary: result.summary,
     findings: result.findings,
     patch: result.patch,
+    ...(result.baseline ? { baseline: result.baseline } : {}),
   };
   return JSON.stringify(report, null, 2) + '\n';
 }

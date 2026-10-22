@@ -32,6 +32,7 @@ export interface Finding {
 
 /** A finding attached to a tool inside a tools/list document. */
 export interface ToolFinding extends Finding {
+  baselineState?: 'new' | 'unchanged';
   tool: string;
   toolIndex: number;
   /** JSON Pointer to the offending value, relative to the document root. */
@@ -58,6 +59,7 @@ export interface Summary {
 }
 
 export interface LintResult {
+  baseline?: { existing: number; new: number; resolved: number };
   /** The target as given on the command line (file path, URL or command). */
   target: string;
   /** Number of tools examined. */
