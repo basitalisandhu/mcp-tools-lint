@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `schema-compiles` catches dangling local references, malformed regular expressions and invalid keyword types in input and output schemas using a local JSON Schema 2020-12 compiler. External references are not fetched; existing dialect diagnostics remain authoritative for older drafts. (#12)
+
 ## [0.3.0] - 2026-10-20
 
 ### Added

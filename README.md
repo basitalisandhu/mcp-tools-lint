@@ -44,6 +44,7 @@ Annotations are the second half. The MCP blog's post on tool annotations says co
 
 | Rule | Severity | What it means | `--fix` |
 |---|---|---|---|
+| `schema-compiles` | error | Input or output schema cannot compile as JSON Schema 2020-12, including dangling local `$ref`s and invalid keyword values. External references are ignored without fetching; format validation is not performed. | no |
 | `dialect-2020-12` | error | A `$schema` anywhere in `inputSchema` or `outputSchema` is not `https://json-schema.org/draft/2020-12/schema` (a trailing `#` is accepted). | removes the `$schema` key |
 | `no-boolean-schema` | error | `true` or `false` sits where a schema object is expected: a `properties` entry, `items`, an `allOf`/`anyOf`/`oneOf` entry, `$defs`, `not`, `if`/`then`/`else`, the root. Booleans under `additionalProperties`, `additionalItems`, `unevaluatedProperties` and `unevaluatedItems` are allowed. | no: replace `true` with `{}` and `false` with `{"not": {}}` |
 | `required-names-property` | error | A `required` entry names a key that `properties` does not define on the same object schema. Schemas that compose others (`allOf`, `$ref` and so on) are skipped. | no: add the property or drop the entry |
@@ -58,7 +59,7 @@ Annotations are the second half. The MCP blog's post on tool annotations says co
 
 ## Install
 
-Requires Node.js 20 or newer. The only runtime dependencies are `@modelcontextprotocol/sdk` and its peer `zod`.
+Requires Node.js 20 or newer. Runtime dependencies are `@modelcontextprotocol/sdk`, its peer `zod`, and `ajv` for local JSON Schema compilation.
 
 Every release is published by `publish-github-packages.yml` in two places on GitHub Packages: the npm package `@basitalisandhu/mcp-tools-lint` and the container image `ghcr.io/basitalisandhu/mcp-tools-lint`. The package is not on npmjs.com yet; when it is, it will use the same scoped name.
 
