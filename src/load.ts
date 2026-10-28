@@ -54,12 +54,59 @@ export function describeTarget(target: Target): string {
   }
 }
 
-async function loadFile(path: string): Promise<ToolsDocument> {
+/**
+ * How deeply a tools document may nest. The rules walk schemas recursively, so a schema
+ * nested tens of thousands of levels deep overflowed the call stack. Real tool schemas
+ * stay far below this.
+ */
+export const MAX_DEPTH = 256;
+
+/** True when a JSON value nests deeper than `limit`. Iterative, so it cannot overflow. */
+export function nestingExceeds(value: unknown, limit = MAX_DEPTH): boolean {
+  const stack: Array<[unknown, number]> = [[value, 0]];
+  while (stack.length > 0) {
+    const [v, depth] = stack.pop()!;
+    if (v === null || typeof v !== 'object') continue;
+    if (depth >= limit) return true;
+    for (const child of Array.isArray(v) ? v : Object.values(v)) {
+      if (child !== null && typeof child === 'object') stack.push([child, depth + 1]);
+    }
+  }
+  return false;
+}
+
+const TOO_DEEP = `nested more than ${MAX_DEPTH} levels deep; refusing to lint it`;
+
+/**
+ * Decode a file as UTF-8, dropping a leading byte order mark. Bytes that are not UTF-8
+ * are an error: reading them with replacement characters would lint (and patch) a
+ * different tool name than the one in the file.
+ */
+export function decodeUtf8(bytes: Uint8Array): string {
+  if (bytes.length >= 2 && ((bytes[0] === 0xff && bytes[1] === 0xfe) || (bytes[0] === 0xfe && bytes[1] === 0xff))) {
+    throw new Error('is UTF-16 text; save it as UTF-8');
+  }
   let text: string;
   try {
-    text = await readFile(path, 'utf8');
+    text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  } catch {
+    throw new Error('is not UTF-8 text; save it as UTF-8');
+  }
+  return text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;
+}
+
+async function loadFile(path: string): Promise<ToolsDocument> {
+  let bytes: Buffer;
+  try {
+    bytes = await readFile(path);
   } catch (error) {
     throw new ConnectionError(`cannot read ${path}: ${(error as Error).message}`, { cause: error });
+  }
+  let text: string;
+  try {
+    text = decodeUtf8(bytes);
+  } catch (error) {
+    throw new ConnectionError(`${path} ${(error as Error).message}`);
   }
   let parsed: unknown;
   try {
@@ -67,6 +114,7 @@ async function loadFile(path: string): Promise<ToolsDocument> {
   } catch (error) {
     throw new ConnectionError(`${path} is not valid JSON: ${(error as Error).message}`, { cause: error });
   }
+  if (nestingExceeds(parsed)) throw new ConnectionError(`${path} is ${TOO_DEEP}`);
   try {
     return locateTools(parsed);
   } catch (error) {
@@ -74,11 +122,24 @@ async function loadFile(path: string): Promise<ToolsDocument> {
   }
 }
 
+/**
+ * The most tools/list pages followed for one server. A server that hands out a new cursor
+ * on every page would otherwise keep the tool listing forever (the repeated-cursor check
+ * only catches a cursor that comes back).
+ */
+export const MAX_PAGES = 1000;
+
 async function listAllTools(client: Client, timeoutMs: number): Promise<unknown[]> {
   const tools: unknown[] = [];
   let cursor: string | undefined;
   const seen = new Set<string>();
+  let pages = 0;
   do {
+    if (++pages > MAX_PAGES) {
+      throw new ConnectionError(
+        `server returned a nextCursor on ${MAX_PAGES} tools/list pages in a row (${tools.length} tools so far); stopping. A server should end the listing by leaving nextCursor out`,
+      );
+    }
     const page = await client.request(
       { method: 'tools/list', params: cursor === undefined ? {} : { cursor } },
       RawListToolsResult,
@@ -132,6 +193,7 @@ async function loadLive(target: Exclude<Target, { kind: 'file' }>, options: Load
   try {
     await client.connect(transport, { timeout: timeoutMs });
     const tools = await listAllTools(client, timeoutMs);
+    if (nestingExceeds(tools)) throw new ConnectionError(`the tools/list result from ${describeTarget(target)} is ${TOO_DEEP}`);
     return { document: { tools }, basePointer: '/tools', tools };
   } catch (error) {
     if (error instanceof ConnectionError) throw error;

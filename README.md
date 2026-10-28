@@ -75,8 +75,8 @@ GitHub's npm registry asks for a token even to install public packages. That is 
 
 ```bash
 npx @basitalisandhu/mcp-tools-lint --help              # run without installing
-npm install -g @basitalisandhu/mcp-tools-lint@0.3.0    # global CLI, installs the mcp-tools-lint command
-npm install -D @basitalisandhu/mcp-tools-lint@0.3.0    # as a dev dependency of a server project
+npm install -g @basitalisandhu/mcp-tools-lint@0.3.1    # global CLI, installs the mcp-tools-lint command
+npm install -D @basitalisandhu/mcp-tools-lint@0.3.1    # as a dev dependency of a server project
 ```
 
 ### Container image
@@ -84,8 +84,8 @@ npm install -D @basitalisandhu/mcp-tools-lint@0.3.0    # as a dev dependency of 
 The image is built for `linux/amd64` and `linux/arm64`, runs as the non-root `node` user, and is tagged with the version and `latest`; pin the version. The working directory is `/work`, so mount the files to lint there:
 
 ```bash
-docker run --rm -v "$PWD:/work:ro" ghcr.io/basitalisandhu/mcp-tools-lint:0.3.0 tools.json
-docker run --rm ghcr.io/basitalisandhu/mcp-tools-lint:0.3.0 https://mcp.example.com/mcp -H "Authorization: Bearer $TOKEN"
+docker run --rm -v "$PWD:/work:ro" ghcr.io/basitalisandhu/mcp-tools-lint:0.3.1 tools.json
+docker run --rm ghcr.io/basitalisandhu/mcp-tools-lint:0.3.1 https://mcp.example.com/mcp -H "Authorization: Bearer $TOKEN"
 ```
 
 A stdio target runs inside the container, so it only works for a server command the image can start (Node.js is available; mount the server's files). To write a SARIF file or a patch, mount `/work` read-write.
@@ -93,10 +93,10 @@ A stdio target runs inside the container, so it only works for a server command 
 The image is signed with cosign (keyless) and carries a build provenance attestation; an SPDX SBOM is attached to the GitHub release. To check it before running it:
 
 ```bash
-cosign verify ghcr.io/basitalisandhu/mcp-tools-lint:0.3.0 \
+cosign verify ghcr.io/basitalisandhu/mcp-tools-lint:0.3.1 \
   --certificate-identity-regexp '^https://github.com/basitalisandhu/mcp-tools-lint/\.github/workflows/publish-github-packages\.yml@refs/tags/v' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
-gh attestation verify oci://ghcr.io/basitalisandhu/mcp-tools-lint:0.3.0 --owner basitalisandhu
+gh attestation verify oci://ghcr.io/basitalisandhu/mcp-tools-lint:0.3.1 --owner basitalisandhu
 ```
 
 To build the image from a checkout: `docker build -t mcp-tools-lint .`
@@ -284,7 +284,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - run: npm ci && npm run build
-      - uses: basitalisandhu/mcp-tools-lint/action@v0.3.0   # pin a release tag
+      - uses: basitalisandhu/mcp-tools-lint/action@v0.3.1   # pin a release tag
         with:
           command: node dist/index.js        # or target: tools.json / https://host/mcp
           sarif-location: src/index.ts
@@ -313,6 +313,24 @@ const result = lintTools(doc, 'tools.json');     // { findings, patch, summary, 
 const fixed = applyPatch(doc.document, result.patch);
 const findings = checkTool(tool);                // one tool, no I/O
 ```
+
+## Troubleshooting
+
+Real messages and what to do about them.
+
+**`npm error 401 Unauthorized ... authentication token not provided`** when installing. GitHub Packages asks for a token with `read:packages` even for public packages; see [npm from GitHub Packages](#npm-from-github-packages), or build [from a clone](#from-a-clone) with no token.
+
+**`cannot list tools from my-server: spawn my-server ENOENT`.** The command after `--` is not on `PATH`. Use the full path, `node path/to/server.js`, or `npx -y <package>`.
+
+**`cannot list tools from https://host/mcp: fetch failed`.** Nothing answered at that URL: check the host, port and path. A server that answers 405, or hangs, may still speak the 2024-11-05 HTTP+SSE transport; point at its event-stream URL with `--transport sse`.
+
+**`MCP error -32001: Request timed out`.** The server started but did not answer `initialize` or `tools/list` within `--timeout` seconds (default 20). A server that writes logs to stdout instead of stderr breaks the stdio protocol and causes this too.
+
+**`tools.json is UTF-16 text; save it as UTF-8`** or **`is not UTF-8 text`.** PowerShell's `>` writes UTF-16; use `Out-File -Encoding utf8`. A UTF-8 byte order mark is fine. Before 0.3.1 such a file failed with a confusing JSON error (UTF-16) or was linted with replacement characters in the tool names (Latin-1).
+
+**`tools.json is nested more than 256 levels deep; refusing to lint it`.** No real tool schema nests that deep. Before 0.3.1 this crashed with `RangeError: Maximum call stack size exceeded`.
+
+**`server returned a nextCursor on 1000 tools/list pages in a row`.** The server never ends its listing. It should leave `nextCursor` out of the last page. Before 0.3.1 the linter kept following the cursors.
 
 ## Frequently asked questions
 

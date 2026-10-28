@@ -6,6 +6,20 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-10-28
+
+### Fixed
+
+- A tools document nested tens of thousands of levels deep crashed with `RangeError: Maximum call stack size exceeded`; files and live `tools/list` results nested more than 256 levels are now refused with exit 2 naming the target.
+- A file that is not UTF-8 was linted with replacement characters in tool names (Latin-1) or failed with a confusing JSON error (UTF-16); both are now refused with exit 2 and say to save the file as UTF-8. A UTF-8 byte order mark is accepted.
+- A server that returns a new `nextCursor` on every `tools/list` page kept the linter listing forever; it now stops after 1,000 pages with exit 2.
+
+### Added
+
+- README: Troubleshooting section with the real messages and their fixes.
+- `scripts/e2e-quickstart.sh` runs the README quick start on a fresh clone and the Usage examples from the packed tarball in an empty project; CI runs it.
+- Seeded fuzz tests over the file reader, linter, formatters and patch, plus a 10,000-tool scaling test (the whole CLI run: 1,000 tools 0.09 s, 10,000 tools 0.21 s; already linear).
+
 ## [0.3.0] - 2026-10-20
 
 ### Added
