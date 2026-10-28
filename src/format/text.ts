@@ -30,14 +30,17 @@ export function formatText(result: LintResult): string {
     }
   }
   lines.push('');
-  const { errors, warnings, infos } = result.summary;
-  if (result.findings.length === 0) {
+  const { errors, warnings, infos, suppressed } = result.summary;
+  if (result.findings.length === 0 && suppressed === undefined) {
     lines.push('No problems found.');
   } else {
+    const notes: string[] = [];
+    if (suppressed !== undefined) notes.push(`${suppressed} suppressed by baseline`);
     const fixable = result.findings.filter((f) => f.fix).length;
+    if (fixable > 0) notes.push(`${fixable} fixable with --fix`);
     lines.push(
       `${plural(errors, 'error')}, ${plural(warnings, 'warning')}, ${plural(infos, 'info')}` +
-        (fixable > 0 ? ` (${fixable} fixable with --fix)` : ''),
+        (notes.length > 0 ? ` (${notes.join(', ')})` : ''),
     );
   }
   return lines.join('\n') + '\n';

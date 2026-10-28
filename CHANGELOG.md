@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `--baseline report.json` suppresses findings already present in a saved JSON report before the summary and exit code are computed, so CI fails only on new findings while a backlog is worked down; `--baseline-write report.json` writes the current findings in that shape. Summaries count suppressed and resolved findings. Identity uses tool name, tool-relative path and rule ID rather than tool index or target; duplicate findings are counted individually. (#14)
+
 ## [0.3.1] - 2026-10-28
 
 ### Fixed

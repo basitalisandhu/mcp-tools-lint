@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { existsSync, realpathSync } from 'node:fs';
-import { writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
+import { compareBaseline, parseBaseline } from './baseline.js';
 import { basename, relative, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parseArgs, type ParseArgsConfig } from 'node:util';
@@ -64,6 +65,9 @@ Options
                                    or the first existing file among a stdio command's arguments)
       --rules                      list the rules and exit
       --ignore-rule <id>           suppress a rule and its fixes (repeatable)
+      --baseline <report.json>     drop findings already in a saved JSON report
+      --baseline-write <report.json>
+                                   write the current findings as a JSON report usable with --baseline
   -v, --version                    print the version and exit
   -h, --help                       show this help
 
@@ -163,6 +167,8 @@ const ARG_CONFIG = {
     'sarif-location': { type: 'string' },
     rules: { type: 'boolean', default: false },
     'ignore-rule': { type: 'string', multiple: true },
+    baseline: { type: 'string' },
+    'baseline-write': { type: 'string' },
     version: { type: 'boolean', short: 'v', default: false },
     help: { type: 'boolean', short: 'h', default: false },
   },
@@ -228,8 +234,21 @@ export async function main(argv: string[]): Promise<number> {
     const unknown = ignoredRules.filter((id) => !validIds.some((valid) => valid === id));
     if (unknown.length) throw new UsageError(`unknown rule ${unknown.join(', ')}; valid IDs: ${validIds.join(', ')}`);
 
+    let baseline: ReturnType<typeof parseBaseline> | undefined;
+    if (values.baseline !== undefined) {
+      try {
+        baseline = parseBaseline(JSON.parse(await readFile(values.baseline, 'utf8')));
+      } catch (error) {
+        throw new UsageError(`cannot read --baseline ${values.baseline}: ${(error as Error).message}`);
+      }
+    }
     const doc = await loadTools(target, { env, headers, timeoutMs });
-    const result = lintTools(doc, describeTarget(target), ignoredRules);
+    const current = lintTools(doc, describeTarget(target), ignoredRules);
+    if (values['baseline-write'] !== undefined) {
+      await writeFile(values['baseline-write'], formatJson(current), 'utf8');
+      process.stderr.write(`wrote a baseline report for ${current.findings.length} finding${current.findings.length === 1 ? '' : 's'} to ${values['baseline-write']}\n`);
+    }
+    const result = baseline === undefined ? current : compareBaseline(current, baseline);
 
     let report: string;
     if (format === 'json') report = formatJson(result);
