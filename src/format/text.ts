@@ -10,10 +10,6 @@ function plural(n: number, word: string): string {
 export function formatText(result: LintResult): string {
   const lines: string[] = [];
   lines.push(`${result.target}: ${plural(result.tools, 'tool')}`);
-  if (result.baseline) {
-    const { existing, new: added, resolved } = result.baseline;
-    lines.push(`Baseline: ${existing} existing, ${added} new, ${resolved} resolved`);
-  }
   const byTool = new Map<string, LintResult['findings']>();
   for (const f of result.findings) {
     const key = `${f.toolIndex}:${f.tool}`;
@@ -28,20 +24,23 @@ export function formatText(result: LintResult): string {
     const sorted = [...findings].sort((a, b) => ORDER[a.severity] - ORDER[b.severity]);
     const widest = Math.max(...sorted.map((f) => f.ruleId.length));
     for (const f of sorted) {
-      const fix = (f.fix ? '  [fixable]' : '') + (f.baselineState ? `  [${f.baselineState}]` : '');
+      const fix = f.fix ? '  [fixable]' : '';
       lines.push(`    ${f.severity.padEnd(7)}  ${f.ruleId.padEnd(widest)}  ${f.message}${fix}`);
       lines.push(`    ${''.padEnd(7)}  ${''.padEnd(widest)}  at ${f.pointer}`);
     }
   }
   lines.push('');
-  const { errors, warnings, infos } = result.summary;
-  if (result.findings.length === 0) {
+  const { errors, warnings, infos, suppressed } = result.summary;
+  if (result.findings.length === 0 && suppressed === undefined) {
     lines.push('No problems found.');
   } else {
+    const notes: string[] = [];
+    if (suppressed !== undefined) notes.push(`${suppressed} suppressed by baseline`);
     const fixable = result.findings.filter((f) => f.fix).length;
+    if (fixable > 0) notes.push(`${fixable} fixable with --fix`);
     lines.push(
       `${plural(errors, 'error')}, ${plural(warnings, 'warning')}, ${plural(infos, 'info')}` +
-        (fixable > 0 ? ` (${fixable} fixable with --fix)` : ''),
+        (notes.length > 0 ? ` (${notes.join(', ')})` : ''),
     );
   }
   return lines.join('\n') + '\n';

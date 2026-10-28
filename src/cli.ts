@@ -65,8 +65,9 @@ Options
                                    or the first existing file among a stdio command's arguments)
       --rules                      list the rules and exit
       --ignore-rule <id>           suppress a rule and its fixes (repeatable)
-      --baseline <report.json>     compare against a saved JSON report
-      --new-only                   report, fix and fail on new findings only (requires --baseline)
+      --baseline <report.json>     drop findings already in a saved JSON report
+      --baseline-write <report.json>
+                                   write the current findings as a JSON report usable with --baseline
   -v, --version                    print the version and exit
   -h, --help                       show this help
 
@@ -167,7 +168,7 @@ const ARG_CONFIG = {
     rules: { type: 'boolean', default: false },
     'ignore-rule': { type: 'string', multiple: true },
     baseline: { type: 'string' },
-    'new-only': { type: 'boolean', default: false },
+    'baseline-write': { type: 'string' },
     version: { type: 'boolean', short: 'v', default: false },
     help: { type: 'boolean', short: 'h', default: false },
   },
@@ -233,7 +234,6 @@ export async function main(argv: string[]): Promise<number> {
     const unknown = ignoredRules.filter((id) => !validIds.some((valid) => valid === id));
     if (unknown.length) throw new UsageError(`unknown rule ${unknown.join(', ')}; valid IDs: ${validIds.join(', ')}`);
 
-    if (values['new-only'] && values.baseline === undefined) throw new UsageError('--new-only requires --baseline');
     let baseline: ReturnType<typeof parseBaseline> | undefined;
     if (values.baseline !== undefined) {
       try {
@@ -244,7 +244,11 @@ export async function main(argv: string[]): Promise<number> {
     }
     const doc = await loadTools(target, { env, headers, timeoutMs });
     const current = lintTools(doc, describeTarget(target), ignoredRules);
-    const result = baseline === undefined ? current : compareBaseline(current, baseline, values['new-only']);
+    if (values['baseline-write'] !== undefined) {
+      await writeFile(values['baseline-write'], formatJson(current), 'utf8');
+      process.stderr.write(`wrote a baseline report for ${current.findings.length} finding${current.findings.length === 1 ? '' : 's'} to ${values['baseline-write']}\n`);
+    }
+    const result = baseline === undefined ? current : compareBaseline(current, baseline);
 
     let report: string;
     if (format === 'json') report = formatJson(result);

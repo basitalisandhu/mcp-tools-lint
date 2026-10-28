@@ -27,7 +27,8 @@ export function locateTools(document: unknown): ToolsDocument {
   throw new Error('expected a JSON array of tools, a {"tools": [...]} object, or a JSON-RPC response with result.tools');
 }
 
-function rebase(ops: PatchOp[], toolPointer: string): PatchOp[] {
+/** Rewrite tool-relative patch paths as document-relative pointers. */
+export function rebase(ops: PatchOp[], toolPointer: string): PatchOp[] {
   return ops.map((op) => {
     switch (op.op) {
       case 'move':

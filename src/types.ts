@@ -56,10 +56,13 @@ export interface Summary {
   errors: number;
   warnings: number;
   infos: number;
+  /** Findings dropped by --baseline; present only when a baseline was given. */
+  suppressed?: number;
+  /** Baseline findings no longer reported; present only when a baseline was given. */
+  resolved?: number;
 }
 
 export interface LintResult {
-  baseline?: { existing: number; new: number; resolved: number };
   /** The target as given on the command line (file path, URL or command). */
   target: string;
   /** Number of tools examined. */

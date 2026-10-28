@@ -59,11 +59,11 @@ Annotations are the second half. The MCP blog's post on tool annotations says co
 ## Adopt incrementally with a baseline
 
 ```bash
-node dist/cli.js tools.json --format json --out baseline.json --fail-on none
-node dist/cli.js tools.json --baseline baseline.json --new-only --fail-on error
+node dist/cli.js tools.json --baseline-write baseline.json
+node dist/cli.js tools.json --baseline baseline.json --fail-on error
 ```
 
-`--baseline` accepts a saved JSON report and records counts of existing, new and resolved findings. Without `--new-only`, all current findings still affect output and exit status; with it, only new findings affect output, thresholds and `--fix`/`--write` patches. Matching uses tool name, tool-relative path, rule ID, severity and message, so reordering tools or changing the target path does not recreate findings. Additional identical occurrences remain new. JSON and SARIF findings carry `baselineState`; text includes counts. Missing or malformed baselines and `--new-only` without a baseline exit 2 before contacting a server. Regenerate the baseline deliberately as debt is fixed; it is not a rule-wide allowlist.
+`--baseline-write` saves the current findings in the JSON report shape. `--baseline` then drops every finding already in that report before the summary and exit code are computed, so CI fails only on new findings while the backlog is worked down, and `--fix`/`--write` patches touch only what is new. Matching uses tool name, tool-relative path and rule ID, so reordering tools, changing the target path or a later release rewording a message does not recreate findings. Additional identical occurrences remain new. Summaries count suppressed and resolved findings; JSON and SARIF findings carry `baselineState`. A missing or malformed baseline exits 2 before contacting a server. Regenerate the baseline deliberately as debt is fixed; it is not a rule-wide allowlist.
 
 ## Install
 
