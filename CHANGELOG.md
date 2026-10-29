@@ -9,6 +9,7 @@ All notable changes to this project are documented here. The format follows
 ### Added
 
 - `--baseline report.json` suppresses findings already present in a saved JSON report before the summary and exit code are computed, so CI fails only on new findings while a backlog is worked down; `--baseline-write report.json` writes the current findings in that shape. Summaries count suppressed and resolved findings. Identity uses tool name, tool-relative path and rule ID rather than tool index or target; duplicate findings are counted individually. (#14)
+- `schema-compiles` catches dangling local references, malformed regular expressions and invalid keyword types in input and output schemas using a local JSON Schema 2020-12 compiler. External references are not fetched; existing dialect diagnostics remain authoritative for older drafts. (#12)
 
 ## [0.3.1] - 2026-10-28
 

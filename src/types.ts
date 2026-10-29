@@ -3,6 +3,7 @@ export type Severity = 'error' | 'warning' | 'info';
 
 /** Identifiers of the rules this version implements. */
 export type RuleId =
+  | 'schema-compiles'
   | 'dialect-2020-12'
   | 'no-boolean-schema'
   | 'required-names-property'

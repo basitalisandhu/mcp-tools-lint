@@ -22,10 +22,11 @@ const FIXTURES: Record<string, Expectation> = {
   boolean: {
     tools: 3,
     exit: 1,
-    summary: { errors: 4, warnings: 5, infos: 1 },
+    summary: { errors: 5, warnings: 5, infos: 1 },
     rules: {
       'no-boolean-schema': 2,
       'required-names-property': 1,
+      'schema-compiles': 1,
       'unsupported-keyword': 3,
       'readonly-verb-contradiction': 1,
       'missing-annotations': 1,
@@ -145,12 +146,12 @@ describe('--ignore-rule', () => {
     expect(run.code).toBe(1);
     const sarif = JSON.parse(run.stdout);
     const rules = sarif.runs[0].tool.driver.rules;
-    expect(rules).toHaveLength(9);
+    expect(rules).toHaveLength(10);
     for (const id of ['description-missing', 'missing-annotations']) {
       expect(rules.find((r: { id: string }) => r.id === id).defaultConfiguration.enabled).toBe(false);
       expect(sarif.runs[0].results.some((r: { ruleId: string }) => r.ruleId === id)).toBe(false);
     }
-    expect(sarif.runs[0].results.length).toBe(8);
+    expect(sarif.runs[0].results.length).toBe(9);
   });
 });
 
@@ -162,7 +163,7 @@ describe('text output', () => {
     expect(run.stdout).toContain('\n  search_docs\n');
     expect(run.stdout).toContain('\n  delete_doc\n');
     expect(run.stdout).toContain('at /tools/0/inputSchema/properties/filters');
-    expect(run.stdout.trimEnd().split('\n').at(-1)).toBe('4 errors, 5 warnings, 1 info');
+    expect(run.stdout.trimEnd().split('\n').at(-1)).toBe('5 errors, 5 warnings, 1 info');
   });
 
   it('says so when there is nothing to report', async () => {
@@ -186,10 +187,10 @@ describe('SARIF output', () => {
     expect(sarif.$schema).toContain('sarif-2.1.0');
     const driver = sarif.runs[0].tool.driver;
     expect(driver.name).toBe('mcp-tools-lint');
-    expect(driver.rules.map((r: { id: string }) => r.id)).toHaveLength(9);
-    expect(new Set(driver.rules.map((r: { id: string }) => r.id)).size).toBe(9);
+    expect(driver.rules.map((r: { id: string }) => r.id)).toHaveLength(10);
+    expect(new Set(driver.rules.map((r: { id: string }) => r.id)).size).toBe(10);
     const results = sarif.runs[0].results;
-    expect(results).toHaveLength(10);
+    expect(results).toHaveLength(11);
     for (const result of results) {
       expect(['error', 'warning', 'note']).toContain(result.level);
       expect(driver.rules[result.ruleIndex].id).toBe(result.ruleId);
@@ -198,7 +199,7 @@ describe('SARIF output', () => {
       expect(result.partialFingerprints['mcpToolsLint/v1']).toMatch(/^[0-9a-f]{32}$/);
     }
     const levels = results.map((r: { level: string }) => r.level).sort();
-    expect(levels.filter((l: string) => l === 'error')).toHaveLength(4);
+    expect(levels.filter((l: string) => l === 'error')).toHaveLength(5);
     expect(levels.filter((l: string) => l === 'note')).toHaveLength(1);
   });
 
@@ -280,7 +281,7 @@ describe('exit codes and arguments', () => {
     const pkg = JSON.parse(await readFile(join(import.meta.dirname, '..', 'package.json'), 'utf8'));
     expect(version.stdout.trim()).toBe(pkg.version);
     const rulesRun = await runCli(['--rules']);
-    expect(rulesRun.stdout.trim().split('\n')).toHaveLength(9);
+    expect(rulesRun.stdout.trim().split('\n')).toHaveLength(10);
   });
 
   it('runs when started through a symlinked bin, as after npm install', async () => {

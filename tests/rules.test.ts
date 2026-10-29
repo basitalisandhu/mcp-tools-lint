@@ -22,7 +22,7 @@ const ok: Tool = {
 };
 
 describe('rule set', () => {
-  it('has the nine documented rule ids in a fixed order', () => {
+  it('has the documented rule ids in a fixed order', () => {
     expect(rules.map((r) => r.id)).toEqual([
       'dialect-2020-12',
       'no-boolean-schema',
@@ -33,6 +33,7 @@ describe('rule set', () => {
       'destructive-without-hint',
       'snake-case-annotation-keys',
       'description-missing',
+      'schema-compiles',
     ]);
   });
 
