@@ -53,6 +53,7 @@ export function formatSarif(result: LintResult, options: SarifOptions): string {
         artifacts: [{ location: { uri: options.artifactUri, uriBaseId: '%SRCROOT%' } }],
         results: result.findings.map((finding) => ({
           ruleId: finding.ruleId,
+          baselineState: finding.baselineState,
           ruleIndex: ruleIndex.get(finding.ruleId),
           level: LEVEL[finding.severity],
           message: { text: `${finding.tool}: ${finding.message} (${finding.pointer})` },

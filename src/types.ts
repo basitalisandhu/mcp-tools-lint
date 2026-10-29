@@ -33,6 +33,7 @@ export interface Finding {
 
 /** A finding attached to a tool inside a tools/list document. */
 export interface ToolFinding extends Finding {
+  baselineState?: 'new' | 'unchanged';
   tool: string;
   toolIndex: number;
   /** JSON Pointer to the offending value, relative to the document root. */
@@ -56,6 +57,10 @@ export interface Summary {
   errors: number;
   warnings: number;
   infos: number;
+  /** Findings dropped by --baseline; present only when a baseline was given. */
+  suppressed?: number;
+  /** Baseline findings no longer reported; present only when a baseline was given. */
+  resolved?: number;
 }
 
 export interface LintResult {
