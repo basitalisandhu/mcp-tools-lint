@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.2] - 2026-10-29
+
 ### Added
 
 - `--baseline report.json` suppresses findings already present in a saved JSON report before the summary and exit code are computed, so CI fails only on new findings while a backlog is worked down; `--baseline-write report.json` writes the current findings in that shape. Summaries count suppressed and resolved findings. Identity uses tool name, tool-relative path and rule ID rather than tool index or target; duplicate findings are counted individually. (#14)
@@ -84,7 +86,9 @@ First release. Published to two registries on GitHub Packages, using only the wo
 
 - The `mcp-tools-lint` command did nothing when started through the symlink that `npm install` and `npx` create in `node_modules/.bin`; the entry point now compares real paths. A test starts the CLI through a symlink.
 
-[Unreleased]: https://github.com/basitalisandhu/mcp-tools-lint/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/basitalisandhu/mcp-tools-lint/compare/v0.3.2...HEAD
+[0.3.2]: https://github.com/basitalisandhu/mcp-tools-lint/compare/v0.3.1...v0.3.2
+[0.3.1]: https://github.com/basitalisandhu/mcp-tools-lint/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/basitalisandhu/mcp-tools-lint/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/basitalisandhu/mcp-tools-lint/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/basitalisandhu/mcp-tools-lint/compare/v0.1.0...v0.1.1
